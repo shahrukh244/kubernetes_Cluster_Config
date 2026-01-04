@@ -1,41 +1,51 @@
 #!/usr/bin/env python3
-
 import os
+import shutil
 import subprocess
 import sys
 
-def run_cmd(cmd, check=True):
-    print(f"[+] Running: {' '.join(cmd)}")
-    result = subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
+# ----------------------------
+# Run shell command helper
+# ----------------------------
+def run(cmd, check=True):
+    print(f"[+] Running: {cmd}")
+    result = subprocess.run(cmd, shell=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if check and result.returncode != 0:
-        print(f"[-] Command failed: {' '.join(cmd)}", file=sys.stderr)
-        print(result.stderr, file=sys.stderr)
+        print(f"[-] Command failed: {cmd}")
+        print(result.stderr)
         sys.exit(1)
     return result
 
-def install_ansible():
-    print("[*] Updating package list...")
-    run_cmd(["sudo", "apt", "update"])
+# ----------------------------
+# Ensure root
+# ----------------------------
+if os.geteuid() != 0:
+    print("❌ Run this script as root!")
+    sys.exit(1)
 
-    print("[*] Installing Ansible from Ubuntu repository...")
-    run_cmd(["sudo", "apt", "install", "-y", "ansible"])
+print("=== Ansible Installer & Configurator (ROOT USER-LEVEL) ===")
 
-def configure_ansible():
-    config_dir = "/etc/ansible"
-    config_file = os.path.join(config_dir, "ansible.cfg")
-    hosts_file = os.path.join(config_dir, "hosts")
+# ----------------------------
+# 1. Update & Install Ansible
+# ----------------------------
+print("[*] Updating package list...")
+run("apt update")
 
-    # Create config directory
-    os.makedirs(config_dir, exist_ok=True)
+print("[*] Installing Ansible...")
+run("apt install -y ansible")
 
-    # Write clean ansible.cfg (fixes deprecation warning)
-    config_content = """[defaults]
-inventory = /etc/ansible/hosts
+# ----------------------------
+# 2. Setup /root/.ansible
+# ----------------------------
+ansible_dir = "/root/.ansible"
+os.makedirs(ansible_dir, exist_ok=True)
+
+ansible_cfg_path = os.path.join(ansible_dir, "ansible.cfg")
+hosts_path = os.path.join(ansible_dir, "hosts")
+
+# ansible.cfg content
+ansible_cfg = f"""[defaults]
+inventory = {hosts_path}
 host_key_checking = False
 interpreter_python = auto_silent
 collections_path = /root/.ansible/collections:/usr/share/ansible/collections
@@ -47,55 +57,30 @@ become_method = sudo
 become_user = root
 """
 
-    print(f"[+] Writing Ansible config to {config_file}")
-    with open(config_file, "w") as f:
-        f.write(config_content)
+print(f"[+] Writing ansible.cfg → {ansible_cfg_path}")
+with open(ansible_cfg_path, "w") as f:
+    f.write(ansible_cfg)
 
-    # Write inventory with localhost
-    if not os.path.exists(hosts_file):
-        print(f"[+] Creating inventory file at {hosts_file}")
-        with open(hosts_file, "w") as f:
-            f.write("localhost ansible_connection=local\n")
+# copy hosts from current directory (your repo)
+local_hosts = os.path.join(os.getcwd(), "hosts")
+if os.path.exists(local_hosts):
+    shutil.copy(local_hosts, hosts_path)
+    print(f"[+] Hosts copied → {hosts_path}")
+else:
+    print("[*] No hosts file found, creating default localhost inventory")
+    with open(hosts_path, "w") as f:
+        f.write("[all]\nlocalhost ansible_connection=local\n")
 
-def verify_install():
-    print("\n[*] Verifying Ansible installation and config...")
-    result = run_cmd(["ansible", "--version"], check=False)
-    if result.returncode != 0:
-        print("[-] ❌ Ansible not found!", file=sys.stderr)
-        sys.exit(1)
+# ----------------------------
+# 3. Verify Ansible (localhost only)
+# ----------------------------
+print("\n[*] Verifying Ansible installation (localhost only)...")
+result = run("ansible localhost -m ping", check=False)
+if result.returncode == 0 and '"pong"' in result.stdout:
+    print("[+] ✅ Ansible is fully operational for root user (localhost only).")
+else:
+    print("[-] ❌ Ping test failed!")
+    print(result.stderr)
+    sys.exit(1)
 
-    # Check if config file is loaded
-    output = result.stdout
-    for line in output.splitlines():
-        if line.startswith("  config file = /etc/ansible/ansible.cfg"):
-            print("[+] ✅ Ansible config is active.")
-            break
-    else:
-        print("[-] ⚠️ Config file not detected in output.")
-
-    # Final ping test
-    print("[*] Running local ping test...")
-    ping_result = run_cmd([
-        "ansible", "localhost", "-m", "ping"
-    ], check=False)
-
-    if ping_result.returncode == 0 and '"ping": "pong"' in ping_result.stdout:
-        print("[+] ✅ Ansible is fully operational!")
-    else:
-        print("[-] ❌ Ping test failed.", file=sys.stderr)
-        print(ping_result.stderr, file=sys.stderr)
-        sys.exit(1)
-
-def main():
-    print("=== Ansible Installer & Configurator for Ubuntu 24.04 ===")
-    install_ansible()
-    configure_ansible()
-    verify_install()
-    print("\n🎉 Ansible is ready for automation!")
-
-if __name__ == "__main__":
-    # Ensure running as root (required for apt and /etc writes)
-    if os.geteuid() != 0:
-        print("[-] This script must be run as root (use sudo).")
-        sys.exit(1)
-    main()
+print("\n🎉 Ansible is READY! User-level config: /root/.ansible")
