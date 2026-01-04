@@ -62,7 +62,7 @@ with open(ansible_cfg_path, "w") as f:
     f.write(ansible_cfg)
 
 # Copy hosts from repo
-repo_hosts = "/root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/hosts"
+repo_hosts = "/root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/ansible_config_files/hosts"
 if os.path.exists(repo_hosts):
     shutil.copy(repo_hosts, hosts_path)
     print(f"[+] Hosts copied → {hosts_path}")
@@ -84,4 +84,5 @@ else:
     sys.exit(1)
 
 print("\n🎉 Ansible is READY! User-level config: /root/.ansible")
+
 
