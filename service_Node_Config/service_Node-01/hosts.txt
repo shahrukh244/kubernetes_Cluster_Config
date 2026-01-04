@@ -1,0 +1,27 @@
+# =========================
+# Service Nodes
+# =========================
+[service_nodes]
+srv01.kube.lan ansible_host=10.0.0.1 node_external_ip=192.168.1.51
+srv02.kube.lan ansible_host=10.0.0.2 node_external_ip=192.168.1.52
+
+# =========================
+# Bastion / Jump Node
+# =========================
+[bastion]
+bastion.kube.lan ansible_host=10.0.0.99
+
+# =========================
+# Kubernetes Masters
+# =========================
+[kube_masters]
+master01.kube.lan ansible_host=10.0.0.101
+master02.kube.lan ansible_host=10.0.0.102
+master03.kube.lan ansible_host=10.0.0.103
+
+# =========================
+# Kubernetes Workers
+# =========================
+[kube_workers]
+worker01.kube.lan ansible_host=10.0.0.121
+worker02.kube.lan ansible_host=10.0.0.122
