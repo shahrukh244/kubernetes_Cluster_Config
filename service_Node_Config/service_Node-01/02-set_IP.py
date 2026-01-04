@@ -3,6 +3,7 @@ import os
 import shutil
 import stat
 import sys
+import subprocess
 
 # Ensure script is run as root
 if os.geteuid() != 0:
@@ -39,4 +40,10 @@ for fname in ["ens32.yaml", "ens33.yaml"]:
     os.chown(dst, 0, 0)  # root:root
     print(f"[+] Set permissions 600 and owner root:root for {dst}")
 
-print("\n🎉 Netplan files are ready in /etc/netplan/")
+# 4️⃣ Optional: Apply netplan now (so config is active without waiting for reboot)
+# subprocess.run(["netplan", "apply"], check=False)
+# print("[*] Netplan applied successfully")
+
+# 5️⃣ Reboot system
+print("\n[*] Rebooting system in 15 seconds to apply new network config...")
+subprocess.run("sleep 15 && reboot", shell=True)
