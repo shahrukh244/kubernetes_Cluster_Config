@@ -61,10 +61,10 @@ print(f"[+] Writing ansible.cfg → {ansible_cfg_path}")
 with open(ansible_cfg_path, "w") as f:
     f.write(ansible_cfg)
 
-# copy hosts from current directory (your repo)
-local_hosts = os.path.join(os.getcwd(), "hosts")
-if os.path.exists(local_hosts):
-    shutil.copy(local_hosts, hosts_path)
+# Copy hosts from repo
+repo_hosts = "/root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/hosts"
+if os.path.exists(repo_hosts):
+    shutil.copy(repo_hosts, hosts_path)
     print(f"[+] Hosts copied → {hosts_path}")
 else:
     print("[*] No hosts file found, creating default localhost inventory")
@@ -84,3 +84,4 @@ else:
     sys.exit(1)
 
 print("\n🎉 Ansible is READY! User-level config: /root/.ansible")
+
