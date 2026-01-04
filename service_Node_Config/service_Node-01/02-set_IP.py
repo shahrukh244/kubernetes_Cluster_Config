@@ -4,6 +4,7 @@ import shutil
 import stat
 import sys
 import subprocess
+import time
 
 # Ensure script is run as root
 if os.geteuid() != 0:
@@ -40,10 +41,15 @@ for fname in ["ens32.yaml", "ens33.yaml"]:
     os.chown(dst, 0, 0)  # root:root
     print(f"[+] Set permissions 600 and owner root:root for {dst}")
 
-# 4️⃣ Optional: Apply netplan now (so config is active without waiting for reboot)
+# 4️⃣ Optional: Apply netplan now (so config is active without reboot)
 # subprocess.run(["netplan", "apply"], check=False)
 # print("[*] Netplan applied successfully")
 
-# 5️⃣ Reboot system
-print("\n[*] Rebooting system in 15 seconds to apply new network config...")
-subprocess.run("sleep 15 && reboot", shell=True)
+# 5️⃣ Reboot with 15-second countdown timer
+print("\n[*] Rebooting system to apply new network config in 15 seconds...")
+for i in range(15, 0, -1):
+    print(f"⏳ Rebooting in {i} seconds...", end="\r")
+    time.sleep(1)
+
+print("🔄 Rebooting now!                  ")
+subprocess.run("reboot", shell=True)
