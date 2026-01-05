@@ -41,9 +41,13 @@ for fname in ["ens32.yaml", "ens33.yaml"]:
     os.chown(dst, 0, 0)  # root:root
     print(f"[+] Set permissions 600 and owner root:root for {dst}")
 
-# 4️⃣ Optional: Apply netplan now (so config is active without reboot)
-# subprocess.run(["netplan", "apply"], check=False)
-# print("[*] Netplan applied successfully")
+# 4️⃣ Set hostname before reboot
+print("\n[*] Setting hostname to svc-1.kube.lan")
+subprocess.run(
+    ["hostnamectl", "set-hostname", "svc-1.kube.lan"],
+    check=True
+)
+print("[+] Hostname set successfully")
 
 # 5️⃣ Reboot with 15-second countdown timer
 print("\n[*] Rebooting system to apply new network config in 15 seconds...")
