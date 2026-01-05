@@ -43,7 +43,7 @@ os.makedirs(ansible_dir, exist_ok=True)
 # ----------------------------
 # 3. Copy ansible.cfg (STATIC FILE)
 # ----------------------------
-repo_cfg = "/root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/ansible_config_files/ansible.cfg"
+repo_cfg = "/root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/ansible_config_files/ansible.cfg"
 dest_cfg = "/root/.ansible.cfg"
 
 if not os.path.exists(repo_cfg):
@@ -83,3 +83,4 @@ else:
 print("\n🎉 Ansible is READY!")
 print("📄 Config   : /root/.ansible.cfg")
 print("📦 Inventory: /root/.ansible/hosts")
+
