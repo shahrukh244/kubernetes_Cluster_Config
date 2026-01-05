@@ -4,12 +4,12 @@ import shutil
 import subprocess
 import sys
 
-# ----------------------------
-# Run shell command helper
-# ----------------------------
 def run(cmd, check=True):
     print(f"[+] Running: {cmd}")
-    result = subprocess.run(cmd, shell=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(
+        cmd, shell=True, text=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     if check and result.returncode != 0:
         print(f"[-] Command failed: {cmd}")
         print(result.stderr)
@@ -35,55 +35,51 @@ print("[*] Installing Ansible...")
 run("apt install -y ansible")
 
 # ----------------------------
-# 2. Setup /root/.ansible
+# 2. Prepare directories
 # ----------------------------
 ansible_dir = "/root/.ansible"
 os.makedirs(ansible_dir, exist_ok=True)
 
-ansible_cfg_path = os.path.join(ansible_dir, "ansible.cfg")
-hosts_path = os.path.join(ansible_dir, "hosts")
+# ----------------------------
+# 3. Copy ansible.cfg (STATIC FILE)
+# ----------------------------
+repo_cfg = "/root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/ansible_config_files/ansible.cfg"
+dest_cfg = "/root/.ansible.cfg"
 
-# ansible.cfg content
-ansible_cfg = f"""[defaults]
-inventory = {hosts_path}
-host_key_checking = False
-interpreter_python = auto_silent
-collections_path = /root/.ansible/collections:/usr/share/ansible/collections
-deprecation_warnings = False
+if not os.path.exists(repo_cfg):
+    print(f"❌ ansible.cfg not found in repo: {repo_cfg}")
+    sys.exit(1)
 
-[privilege_escalation]
-become = True
-become_method = sudo
-become_user = root
-"""
+shutil.copy(repo_cfg, dest_cfg)
+print(f"[+] ansible.cfg copied → {dest_cfg}")
 
-print(f"[+] Writing ansible.cfg → {ansible_cfg_path}")
-with open(ansible_cfg_path, "w") as f:
-    f.write(ansible_cfg)
-
-# Copy hosts from repo
+# ----------------------------
+# 4. Copy inventory
+# ----------------------------
 repo_hosts = "/root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/ansible_config_files/hosts"
+dest_hosts = os.path.join(ansible_dir, "hosts")
+
 if os.path.exists(repo_hosts):
-    shutil.copy(repo_hosts, hosts_path)
-    print(f"[+] Hosts copied → {hosts_path}")
+    shutil.copy(repo_hosts, dest_hosts)
+    print(f"[+] Hosts copied → {dest_hosts}")
 else:
-    print("[*] No hosts file found, creating default localhost inventory")
-    with open(hosts_path, "w") as f:
+    print("[*] No hosts file found, creating localhost inventory")
+    with open(dest_hosts, "w") as f:
         f.write("[all]\nlocalhost ansible_connection=local\n")
 
 # ----------------------------
-# 3. Verify Ansible (localhost only)
+# 5. Verify Ansible
 # ----------------------------
 print("\n[*] Verifying Ansible installation (localhost only)...")
 result = run("ansible localhost -m ping", check=False)
+
 if result.returncode == 0 and '"pong"' in result.stdout:
-    print("[+] ✅ Ansible is fully operational for root user (localhost only).")
+    print("[+] ✅ Ansible is fully operational for root user.")
 else:
     print("[-] ❌ Ping test failed!")
     print(result.stderr)
     sys.exit(1)
 
-print("\n🎉 Ansible is READY! User-level config: /root/.ansible")
-
-
-
+print("\n🎉 Ansible is READY!")
+print("📄 Config   : /root/.ansible.cfg")
+print("📦 Inventory: /root/.ansible/hosts")
