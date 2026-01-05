@@ -1,23 +1,27 @@
 $TTL    604800
 @       IN      SOA     svc-1.kube.lan. contact.kube.lan. (
-                  1 ; Serial
-             604800 ; Refresh
-              86400 ; Retry
-            2419200 ; Expire
-             604800 ; Minimum
+                  2 ; Serial (INCREMENT THIS)
+             604800
+              86400
+            2419200
+             604800
 )
         IN      NS      svc-1.kube.lan.
 
-1      IN    PTR    svc-1.kube.lan.
+; DNS / VIP
+1      IN      PTR     svc-1.kube.lan.
+
+; Service node actual IP
+51     IN      PTR     svc-1.kube.lan.
 
 ; Bastion Node
-100    IN    PTR    bastion.kube.lan.
+100    IN      PTR     bastion.kube.lan.
 
 ; Control Plane Nodes
-211    IN    PTR    kube-cp-1.kube.lan.
-212    IN    PTR    kube-cp-2.kube.lan.
-213    IN    PTR    kube-cp-3.kube.lan.
+211    IN      PTR     kube-cp-1.kube.lan.
+212    IN      PTR     kube-cp-2.kube.lan.
+213    IN      PTR     kube-cp-3.kube.lan.
 
 ; Worker Nodes
-221    IN    PTR    kube-w-1.kube.lan.
-222    IN    PTR    kube-w-2.kube.lan.
+221    IN      PTR     kube-w-1.kube.lan.
+222    IN      PTR     kube-w-2.kube.lan.
