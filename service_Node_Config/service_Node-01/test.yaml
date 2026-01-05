@@ -99,8 +99,8 @@
         group: root
         mode: "0644"
       when: root_ssh_key.stat.exists
-        
-    # -------- Swap --------
+
+    # -------- SWAP (smart & idempotent) --------
     # 1. Check if swap is enabled at runtime
     - name: Check runtime swap status
       ansible.builtin.command: swapon --noheadings
@@ -133,13 +133,45 @@
       ansible.builtin.command: swapon --show
       changed_when: false
 
-    # -------- UFW --------
-    - name: Disable UFW
+    # 2. Disable swap ONLY if enabled
+    - name: Disable swap if enabled
+      ansible.builtin.command: swapoff -a
+      when: swap_runtime.stdout | trim != ""
+
+    # 3. Detect ACTIVE (not commented) swap entry in fstab
+    - name: Detect active swap entry in fstab
+      ansible.builtin.shell: |
+        awk '!/^[[:space:]]*#/ && $1 == "/swap.img" { print }' /etc/fstab
+      register: swap_fstab_active
+      changed_when: false
+
+    # 4. Comment swap entry ONLY if active
+    - name: Comment swap entry in fstab
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        regexp: '^[[:space:]]*/swap\.img.*$'
+        line: '#/swap.img       none    swap    sw      0       0'
+      when: swap_fstab_active.stdout | trim != ""
+
+    # 5. Final verification (read-only)
+    - name: Final swap verification
+      ansible.builtin.command: swapon --show
+      changed_when: false
+
+    # -------- UFW (smart & idempotent) --------
+
+    - name: Check if UFW service exists
+      ansible.builtin.stat:
+        path: /lib/systemd/system/ufw.service
+      register: ufw_service
+
+    - name: Stop and disable UFW if present
       ansible.builtin.service:
         name: ufw
         state: stopped
         enabled: false
-      ignore_errors: yes
+      when: ufw_service.stat.exists
+
 
     # -------- Keepalived --------
     - name: Install Keepalived
