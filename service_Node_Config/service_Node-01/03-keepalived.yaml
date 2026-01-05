@@ -1,6 +1,6 @@
 ---
 - name: Install and configure Keepalived
-  hosts: all
+  hosts: localhost
   become: true
 
   vars:
