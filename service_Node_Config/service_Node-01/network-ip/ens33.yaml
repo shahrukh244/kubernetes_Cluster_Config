@@ -4,7 +4,7 @@ network:
     ens33:
       dhcp4: no
       addresses:
-        - 10.0.0.1/24
+        - 10.0.0.51/24
       nameservers:
         addresses: [127.0.0.1]
         search: [svc-1.kube.lan]
