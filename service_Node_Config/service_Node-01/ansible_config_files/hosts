@@ -3,7 +3,7 @@
 # Service Nodes
 # =========================
 [service_nodes]
-svc-1.kube.lan ansible_host=10.0.0.1 node_external_ip=192.168.1.51
+svc-1.kube.lan ansible_connection=local ansible_python_interpreter=/usr/bin/python3 node_external_ip=192.168.1.51
 svc-2.kube.lan ansible_host=10.0.0.2 node_external_ip=192.168.1.52
 
 # =========================
