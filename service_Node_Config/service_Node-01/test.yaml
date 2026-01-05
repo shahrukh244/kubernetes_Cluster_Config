@@ -1,12 +1,12 @@
 ---
-- name: Full Ubuntu system setup with BIND, services, and Keepalived
+- name: Full Ubuntu system setup with BIND, services, Keepalived, and root login config
   hosts: localhost
   become: true
 
   tasks:
 
     # -------- SSH --------
-    - name: Ensure SSH root login is key-based only
+    - name: Ensure root login via password and key is allowed
       ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: "{{ item.regexp }}"
@@ -15,8 +15,13 @@
         backrefs: yes
       loop:
         - { regexp: '^#?PermitRootLogin\s+.*', line: 'PermitRootLogin yes' }
-        - { regexp: '^#?PasswordAuthentication\s+.*', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?PasswordAuthentication\s+.*', line: 'PasswordAuthentication yes' }
         - { regexp: '^#?UsePAM\s+.*', line: 'UsePAM yes' }
+
+    - name: Set root password
+      ansible.builtin.user:
+        name: root
+        password: "{{ '123' | password_hash('sha512') }}"
 
     - name: Restart SSH service
       ansible.builtin.service:
