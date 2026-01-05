@@ -173,37 +173,44 @@
       when: ufw_service.stat.exists
 
 
-    # -------- Keepalived --------
-    - name: Install Keepalived
-      ansible.builtin.apt:
-        name: keepalived
-        state: present
-        update_cache: yes
+# -------- Keepalived (smart & idempotent) --------
 
-    - name: Enable ip_nonlocal_bind
-      ansible.builtin.sysctl:
-        name: net.ipv4.ip_nonlocal_bind
-        value: "1"
-        state: present
-        reload: yes
+- name: Check if Keepalived is installed
+  ansible.builtin.apt:
+    name: keepalived
+    state: present
+    update_cache: yes
 
-    - name: Ensure keepalived config directory exists
-      ansible.builtin.file:
-        path: /etc/keepalived
-        state: directory
-        mode: "0755"
+- name: Ensure ip_nonlocal_bind sysctl is set
+  ansible.builtin.sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: "1"
+    state: present
+    reload: yes
 
-    - name: Copy keepalived.conf
-      ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/keepalived.conf
-        dest: /etc/keepalived/keepalived.conf
-        mode: "0644"
+- name: Ensure keepalived config directory exists
+  ansible.builtin.file:
+    path: /etc/keepalived
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
 
-    - name: Enable and start keepalived
-      ansible.builtin.systemd:
-        name: keepalived
-        enabled: yes
-        state: started
+- name: Copy keepalived.conf only if changed
+  ansible.builtin.copy:
+    src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/keepalived.conf
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: "0644"
+    force: yes
+
+- name: Enable and start keepalived service
+  ansible.builtin.systemd:
+    name: keepalived
+    enabled: yes
+    state: started
+
 
     # -------- BIND --------
     - name: Install BIND9
