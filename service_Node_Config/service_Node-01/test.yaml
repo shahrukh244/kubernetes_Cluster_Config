@@ -148,43 +148,65 @@
       when: ufw_service.stat.exists
 
 
-# -------- Keepalived (smart & idempotent) --------
+    # -------- Keepalived --------
 
-- name: Check if Keepalived is installed
-  ansible.builtin.apt:
-    name: keepalived
-    state: present
-    update_cache: yes
+    - name: Install keepalived (only if not installed)
+      ansible.builtin.apt:
+        name: keepalived
+        state: present
+        update_cache: yes
 
-- name: Ensure ip_nonlocal_bind sysctl is set
-  ansible.builtin.sysctl:
-    name: net.ipv4.ip_nonlocal_bind
-    value: "1"
-    state: present
-    reload: yes
+    - name: Ensure ip_nonlocal_bind sysctl is set
+      ansible.builtin.sysctl:
+        name: net.ipv4.ip_nonlocal_bind
+        value: "1"
+        state: present
+        reload: yes
 
-- name: Ensure keepalived config directory exists
-  ansible.builtin.file:
-    path: /etc/keepalived
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
+    - name: Ensure keepalived config directory exists
+      ansible.builtin.file:
+        path: /etc/keepalived
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
 
-- name: Copy keepalived.conf only if changed
-  ansible.builtin.copy:
-    src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/keepalived.conf
-    dest: /etc/keepalived/keepalived.conf
-    owner: root
-    group: root
-    mode: "0644"
-    force: yes
+    - name: Deploy keepalived.conf only if changed
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/keepalived.conf
+        dest: /etc/keepalived/keepalived.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart keepalived
 
-- name: Enable and start keepalived service
-  ansible.builtin.systemd:
-    name: keepalived
-    enabled: yes
-    state: started
+    # ---- Health check scripts ----
+    - name: Deploy keepalived health check scripts only if changed
+      ansible.builtin.copy:
+        src: kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/{{ item }}
+        dest: /usr/local/bin/{{ item }}
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - check_bind.sh
+        - check_chrony.sh
+        - check_dhcp.sh
+        - check_haproxy.sh
+      notify: Restart keepalived
+
+    - name: Ensure keepalived service is enabled and running
+      ansible.builtin.systemd:
+        name: keepalived
+        enabled: yes
+        state: started
+
+  handlers:
+
+    - name: Restart keepalived
+      ansible.builtin.systemd:
+        name: keepalived
+        state: restarted
 
 
     # -------- BIND --------
