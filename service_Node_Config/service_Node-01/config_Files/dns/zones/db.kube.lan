@@ -1,20 +1,23 @@
 $TTL    604800
-@       IN      SOA     kube-svc-01.kube.lan. contact.kube.lan. (
+@       IN      SOA     svc-1.kube.lan. contact.kube.lan. (
                   1 ; Serial
              604800 ; Refresh
               86400 ; Retry
             2419200 ; Expire
              604800 ; Minimum
 )
-        IN      NS      kube-svc-01.kube.lan.
+        IN      NS      svc-1.kube.lan.
 
-kube-svc-01.kube.lan.          IN      A       10.0.0.1
+svc-1.kube.lan.          IN      A       10.0.0.1
+
+; Bastion Node
+bastion.kube.lan.         IN      A      10.0.0.100
 
 ; Control Plane Nodes
-kube-cp-1.lab.kube.lan.         IN      A      10.0.0.201
-kube-cp-2.lab.kube.lan.         IN      A      10.0.0.202
-kube-cp-3.lab.kube.lan.         IN      A      10.0.0.203
+kube-cp-1.kube.lan.         IN      A      10.0.0.211
+kube-cp-2.kube.lan.         IN      A      10.0.0.212
+kube-cp-3.kube.lan.         IN      A      10.0.0.213
 
 ; Worker Nodes
-kube-w-1.lab.kube.lan.          IN      A      10.0.0.211
-kube-w-2.lab.kube.lan.          IN      A      10.0.0.212
+kube-w-1.kube.lan.          IN      A      10.0.0.221
+kube-w-2.kube.lan.          IN      A      10.0.0.222
