@@ -14,7 +14,7 @@ if os.geteuid() != 0:
 print("=== Netplan Config Installer ===")
 
 # Paths
-repo_dir = "/root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/network-ip"
+repo_dir = "/root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/network-ip"
 netplan_dir = "/etc/netplan"
 old_file = os.path.join(netplan_dir, "50-cloud-init.yaml")
 
