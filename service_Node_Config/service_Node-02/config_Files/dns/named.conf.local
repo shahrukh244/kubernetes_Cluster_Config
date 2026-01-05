@@ -1,0 +1,11 @@
+zone "kube.lan" {
+    type slave;
+    file "/var/cache/bind/db.kube.lan";
+    masters { 10.0.0.11; };
+};
+
+zone "0.0.10.in-addr.arpa" {
+    type slave;
+    file "/var/cache/bind/db.reverse";
+    masters { 10.0.0.11; };
+};
