@@ -1,0 +1,13 @@
+network:
+  version: 2
+  ethernets:
+    ens32:
+      dhcp4: no
+      addresses:
+        - 192.168.1.51/24
+      routes:
+        - to: default
+          via: 192.168.1.1
+      nameservers:
+        addresses: [127.0.0.1, 8.8.8.8, 1.1.1.1]
+        search: [svc-1.kube.lan]
