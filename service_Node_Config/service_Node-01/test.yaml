@@ -54,15 +54,26 @@
         mode: "0644"
 
     # -------- Swap --------
-    - name: Disable swap in fstab
-      ansible.builtin.replace:
+    - name: Normalize and comment swap entry in /etc/fstab
+      ansible.builtin.lineinfile:
         path: /etc/fstab
-        regexp: '(\s+swap\s+)'
-        replace: '#\1'
+        regexp: '^\s*/swap\.img.*$'
+        line: '#/swap.img       none    swap    sw      0       0'
+        state: present
 
     - name: Turn off swap immediately
       ansible.builtin.command: swapoff -a
       ignore_errors: yes
+
+    - name: Verify swap is disabled
+      ansible.builtin.command: swapon --show
+      register: swap_status
+      changed_when: false
+
+    - name: Confirm swap status
+      ansible.builtin.debug:
+        msg: "Swap disabled and fstab cleaned successfully"
+      when: swap_status.stdout == ""
 
     # -------- UFW --------
     - name: Disable UFW
