@@ -1,5 +1,5 @@
 ---
-- name: Full Ubuntu system setup with BIND and services
+- name: Full Ubuntu system setup with BIND, services, and Keepalived
   hosts: localhost
   become: true
 
@@ -43,6 +43,42 @@
         enabled: false
       ignore_errors: yes
 
+    # -------- Keepalived --------
+    - name: Install Keepalived
+      ansible.builtin.apt:
+        name: keepalived
+        state: present
+        update_cache: yes
+
+    - name: Enable ip_nonlocal_bind (required for VIP)
+      ansible.builtin.sysctl:
+        name: net.ipv4.ip_nonlocal_bind
+        value: "1"
+        state: present
+        reload: yes
+
+    - name: Ensure keepalived config directory exists
+      ansible.builtin.file:
+        path: /etc/keepalived
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Copy keepalived.conf
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/keepalived.conf
+        dest: /etc/keepalived/keepalived.conf
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Enable and start keepalived
+      ansible.builtin.systemd:
+        name: keepalived
+        enabled: yes
+        state: started
+
     # -------- BIND --------
     - name: Install BIND9
       ansible.builtin.apt:
@@ -58,25 +94,25 @@
 
     - name: Copy BIND configuration files
       ansible.builtin.copy:
-        src: /root/kubernetes-cluster-config/config_files/dns/named.conf.options
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/dns/named.conf.options
         dest: /etc/bind/named.conf.options
         backup: yes
 
     - name: Copy named.conf.local
       ansible.builtin.copy:
-        src: /root/kubernetes-cluster-config/config_files/dns/named.conf.local
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/dns/named.conf.local
         dest: /etc/bind/named.conf.local
         backup: yes
 
     - name: Copy forward zone
       ansible.builtin.copy:
-        src: /root/kubernetes-cluster-config/config_files/dns/zones/db.kube.lan
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/dns/zones/db.kube.lan
         dest: /etc/bind/zones/db.kube.lan
         backup: yes
 
     - name: Copy reverse zone
       ansible.builtin.copy:
-        src: /root/kubernetes-cluster-config/config_files/dns/zones/db.reverse
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/dns/zones/db.reverse
         dest: /etc/bind/zones/db.reverse
         backup: yes
 
@@ -103,7 +139,7 @@
 
     - name: Copy dhcpd.conf
       ansible.builtin.copy:
-        src: /root/kubernetes-cluster-config/config_files/dhcp/dhcpd.conf
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/dhcp/dhcpd.conf
         dest: /etc/dhcp/dhcpd.conf
         backup: yes
 
@@ -166,7 +202,7 @@
 
     - name: Copy HAProxy config
       ansible.builtin.copy:
-        src: /root/kubernetes-cluster-config/config_files/haproxy/haproxy.cfg
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/haproxy/haproxy.cfg
         dest: /etc/haproxy/haproxy.cfg
         backup: yes
 
@@ -229,7 +265,7 @@
 
     - name: Copy chrony.conf
       ansible.builtin.copy:
-        src: /root/kubernetes-cluster-config/config_files/chrony/chrony.conf
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/chrony/chrony.conf
         dest: /etc/chrony/chrony.conf
         backup: yes
 
