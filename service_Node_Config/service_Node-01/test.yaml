@@ -43,27 +43,6 @@
         enabled: false
       ignore_errors: yes
 
-    # -------- Netplan --------
-    - name: Copy netplan for ens32
-      ansible.builtin.copy:
-        src: /root/kubernetes-cluster-config/config_files/network-ip/ens32.yaml
-        dest: /etc/netplan/ens32.yaml
-        owner: root
-        group: root
-        mode: 0600
-
-    - name: Copy netplan for ens34
-      ansible.builtin.copy:
-        src: /root/kubernetes-cluster-config/config_files/network-ip/ens34.yaml
-        dest: /etc/netplan/ens34.yaml
-        owner: root
-        group: root
-        mode: 0600
-
-    - name: Apply netplan
-      ansible.builtin.command: netplan apply
-      ignore_errors: yes
-
     # -------- BIND --------
     - name: Install BIND9
       ansible.builtin.apt:
