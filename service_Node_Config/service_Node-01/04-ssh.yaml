@@ -1,0 +1,25 @@
+---
+- name: Full Ubuntu system setup with BIND and services
+  hosts: localhost
+  become: true
+
+  tasks:
+
+    # -------- SSH --------
+    - name: Ensure SSH root login is key-based only
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+        backrefs: yes
+      loop:
+        - { regexp: '^#?PermitRootLogin\s+.*', line: 'PermitRootLogin yes' }
+        - { regexp: '^#?PasswordAuthentication\s+.*', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?UsePAM\s+.*', line: 'UsePAM yes' }
+
+    - name: Restart SSH service
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+        enabled: true
