@@ -1,6 +1,6 @@
 ---
 - name: Full Ubuntu system setup with BIND and services
-  hosts: all
+  hosts: localhost
   become: true
 
   tasks:
