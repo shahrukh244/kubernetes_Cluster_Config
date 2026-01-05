@@ -1,0 +1,261 @@
+---
+- name: Full Ubuntu system setup with BIND and services
+  hosts: all
+  become: true
+
+  tasks:
+
+    # -------- SSH --------
+    - name: Ensure SSH root login is key-based only
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+        backrefs: yes
+      loop:
+        - { regexp: '^#?PermitRootLogin\s+.*', line: 'PermitRootLogin yes' }
+        - { regexp: '^#?PasswordAuthentication\s+.*', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?UsePAM\s+.*', line: 'UsePAM yes' }
+
+    - name: Restart SSH service
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+        enabled: true
+
+    # -------- Swap --------
+    - name: Disable swap in fstab
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '(\s+swap\s+)'
+        replace: '#\1'
+
+    - name: Turn off swap immediately
+      ansible.builtin.command: swapoff -a
+      ignore_errors: yes
+
+    # -------- UFW --------
+    - name: Disable UFW
+      ansible.builtin.service:
+        name: ufw
+        state: stopped
+        enabled: false
+      ignore_errors: yes
+
+    # -------- Netplan --------
+    - name: Copy netplan for ens32
+      ansible.builtin.copy:
+        src: /root/kubernetes-cluster-config/config_files/network-ip/ens32.yaml
+        dest: /etc/netplan/ens32.yaml
+        owner: root
+        group: root
+        mode: 0600
+
+    - name: Copy netplan for ens34
+      ansible.builtin.copy:
+        src: /root/kubernetes-cluster-config/config_files/network-ip/ens34.yaml
+        dest: /etc/netplan/ens34.yaml
+        owner: root
+        group: root
+        mode: 0600
+
+    - name: Apply netplan
+      ansible.builtin.command: netplan apply
+      ignore_errors: yes
+
+    # -------- BIND --------
+    - name: Install BIND9
+      ansible.builtin.apt:
+        name: bind9
+        state: present
+        update_cache: yes
+
+    - name: Ensure BIND zones directory exists
+      ansible.builtin.file:
+        path: /etc/bind/zones
+        state: directory
+        mode: 0755
+
+    - name: Copy BIND configuration files
+      ansible.builtin.copy:
+        src: /root/kubernetes-cluster-config/config_files/dns/named.conf.options
+        dest: /etc/bind/named.conf.options
+        backup: yes
+
+    - name: Copy named.conf.local
+      ansible.builtin.copy:
+        src: /root/kubernetes-cluster-config/config_files/dns/named.conf.local
+        dest: /etc/bind/named.conf.local
+        backup: yes
+
+    - name: Copy forward zone
+      ansible.builtin.copy:
+        src: /root/kubernetes-cluster-config/config_files/dns/zones/db.kube.lan
+        dest: /etc/bind/zones/db.kube.lan
+        backup: yes
+
+    - name: Copy reverse zone
+      ansible.builtin.copy:
+        src: /root/kubernetes-cluster-config/config_files/dns/zones/db.reverse
+        dest: /etc/bind/zones/db.reverse
+        backup: yes
+
+    - name: Restart BIND9 service
+      ansible.builtin.service:
+        name: bind9
+        state: restarted
+        enabled: true
+      ignore_errors: yes
+
+    # -------- DHCP --------
+    - name: Install DHCP server
+      ansible.builtin.apt:
+        name: isc-dhcp-server
+        state: present
+        update_cache: yes
+
+    - name: Configure DHCP interfaces
+      ansible.builtin.lineinfile:
+        path: /etc/default/isc-dhcp-server
+        regexp: '^INTERFACESv4='
+        line: 'INTERFACESv4="ens34"'
+        create: yes
+
+    - name: Copy dhcpd.conf
+      ansible.builtin.copy:
+        src: /root/kubernetes-cluster-config/config_files/dhcp/dhcpd.conf
+        dest: /etc/dhcp/dhcpd.conf
+        backup: yes
+
+    - name: Restart DHCP server
+      ansible.builtin.service:
+        name: isc-dhcp-server
+        state: restarted
+        enabled: true
+
+    # -------- IP Forwarding & NAT --------
+    - name: Enable IP forwarding
+      ansible.builtin.sysctl:
+        name: net.ipv4.ip_forward
+        value: "1"
+        state: present
+        reload: yes
+
+    - name: Configure NAT iptables rule
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        source: 10.0.0.0/24
+        out_interface: ens32
+        jump: MASQUERADE
+        state: present
+
+    - name: Configure FORWARD iptables rule
+      ansible.builtin.iptables:
+        chain: FORWARD
+        in_interface: ens34
+        out_interface: ens32
+        jump: ACCEPT
+        state: present
+
+    - name: Configure FORWARD established rule
+      ansible.builtin.iptables:
+        chain: FORWARD
+        in_interface: ens32
+        out_interface: ens34
+        jump: ACCEPT
+        ctstate: RELATED,ESTABLISHED
+        state: present
+
+    - name: Install iptables-persistent
+      ansible.builtin.apt:
+        name: iptables-persistent
+        state: present
+        update_cache: yes
+
+    - name: Save iptables rules
+      ansible.builtin.command: netfilter-persistent save
+      ignore_errors: yes
+
+    # -------- HAProxy --------
+    - name: Install HAProxy
+      ansible.builtin.apt:
+        name: haproxy
+        state: present
+        update_cache: yes
+
+    - name: Copy HAProxy config
+      ansible.builtin.copy:
+        src: /root/kubernetes-cluster-config/config_files/haproxy/haproxy.cfg
+        dest: /etc/haproxy/haproxy.cfg
+        backup: yes
+
+    - name: Check HAProxy config
+      ansible.builtin.command: haproxy -c -f /etc/haproxy/haproxy.cfg
+      ignore_errors: yes
+
+    - name: Restart HAProxy
+      ansible.builtin.service:
+        name: haproxy
+        state: restarted
+        enabled: true
+
+    # -------- NFS --------
+    - name: Install NFS server
+      ansible.builtin.apt:
+        name: nfs-kernel-server
+        state: present
+        update_cache: yes
+
+    - name: Create NFS directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0777"
+        owner: 1000
+        group: 1000
+      loop:
+        - /shares/kubernetes/StorageClass/Delete
+        - /shares/kubernetes/StorageClass/Retain
+
+    - name: Configure /etc/exports
+      ansible.builtin.copy:
+        dest: /etc/exports
+        content: |
+          /shares/kubernetes/StorageClass/Delete  10.0.0.0/24(rw,sync,all_squash,anonuid=1000,anongid=1000,no_subtree_check,no_wdelay)
+          /shares/kubernetes/StorageClass/Retain 10.0.0.0/24(rw,sync,all_squash,anonuid=1000,anongid=1000,no_subtree_check,no_wdelay)
+        backup: yes
+
+    - name: Export NFS shares
+      ansible.builtin.command: exportfs -ra
+      ignore_errors: yes
+
+    - name: Restart NFS server
+      ansible.builtin.service:
+        name: nfs-kernel-server
+        state: restarted
+        enabled: true
+
+    # -------- Chrony & Timezone --------
+    - name: Set timezone
+      ansible.builtin.command: timedatectl set-timezone Asia/Kolkata
+      ignore_errors: yes
+
+    - name: Install chrony
+      ansible.builtin.apt:
+        name: chrony
+        state: present
+        update_cache: yes
+
+    - name: Copy chrony.conf
+      ansible.builtin.copy:
+        src: /root/kubernetes-cluster-config/config_files/chrony/chrony.conf
+        dest: /etc/chrony/chrony.conf
+        backup: yes
+
+    - name: Restart chrony
+      ansible.builtin.service:
+        name: chrony
+        state: restarted
+        enabled: true
