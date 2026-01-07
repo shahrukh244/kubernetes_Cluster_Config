@@ -1,6 +1,6 @@
 ---
 - name: Root Password Setup
-  hosts: localhost
+  hosts: svc-1.kube.lan
   become: true
   gather_facts: true
 
@@ -26,3 +26,4 @@
         name: ssh
         state: restarted
         enabled: true
+
