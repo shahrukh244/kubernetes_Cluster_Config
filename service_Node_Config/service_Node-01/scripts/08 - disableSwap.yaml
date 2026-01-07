@@ -1,7 +1,8 @@
 ---
 - name: Full Ubuntu system setup with services
-  hosts: localhost
+  hosts: svc-1.kube.lan
   become: true
+  gather_facts: true
 
   tasks:
     # -------- SWAP (smart & idempotent) --------
@@ -38,3 +39,4 @@
     - name: Final swap verification
       ansible.builtin.command: swapon --show
       changed_when: false
+
