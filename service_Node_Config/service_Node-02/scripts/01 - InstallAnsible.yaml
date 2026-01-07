@@ -1,8 +1,8 @@
 ---
-- name: Smart Ansible Installer & Configurator
-  hosts: localhost
-  connection: local
+- name: Clone Kubernetes Cluster Config Repository
+  hosts: svc-2.kube.lan
   become: true
+  gather_facts: true
 
   tasks:
 
