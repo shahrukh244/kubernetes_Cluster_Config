@@ -1,7 +1,8 @@
 ---
 - name: Full Ubuntu system setup with services
-  hosts: localhost
+  hosts: svc-1.kube.lan
   become: true
+  gather_facts: true
 
   tasks:
     # -------- UFW (smart & idempotent) --------
@@ -17,3 +18,4 @@
         state: stopped
         enabled: false
       when: ufw_service.stat.exists
+
