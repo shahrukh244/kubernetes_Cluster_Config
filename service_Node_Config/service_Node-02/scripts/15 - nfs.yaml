@@ -1,6 +1,6 @@
 ---
 - name: NFS Server Setup (Safe, Verified)
-  hosts: localhost
+  hosts: svc-2.kube.lan
   become: true
   gather_facts: true
 
