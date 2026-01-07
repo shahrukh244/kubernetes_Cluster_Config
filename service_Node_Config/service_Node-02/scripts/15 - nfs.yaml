@@ -32,16 +32,14 @@
         - /shares/kubernetes/StorageClass/Delete
         - /shares/kubernetes/StorageClass/Retain
 
-    - name: Configure /etc/exports
+    - name: Copy /etc/exports from file
       ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/nfs/exports
         dest: /etc/exports
         owner: root
         group: root
         mode: "0644"
         backup: yes
-        content: |
-          /shares/kubernetes/StorageClass/Delete 10.0.0.0/24(rw,sync,all_squash,anonuid=1000,anongid=1000,no_subtree_check)
-          /shares/kubernetes/StorageClass/Retain 10.0.0.0/24(rw,sync,all_squash,anonuid=1000,anongid=1000,no_subtree_check)
 
     - name: Validate NFS exports
       ansible.builtin.command: exportfs -rav
