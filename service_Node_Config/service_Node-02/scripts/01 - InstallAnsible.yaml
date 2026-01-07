@@ -1,5 +1,5 @@
 ---
-- name: Clone Kubernetes Cluster Config Repository
+- name: Smart Ansible Installer on remote node
   hosts: svc-2.kube.lan
   become: true
   gather_facts: true
