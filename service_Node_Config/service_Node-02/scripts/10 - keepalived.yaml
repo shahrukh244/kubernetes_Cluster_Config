@@ -1,0 +1,83 @@
+---
+- name: Full Ubuntu system setup with Keepalived
+  hosts: localhost
+  become: true
+
+  tasks:
+    - name: Install keepalived
+      ansible.builtin.apt:
+        name: keepalived
+        state: present
+        update_cache: yes
+
+    - name: Enable ip_nonlocal_bind sysctl
+      ansible.builtin.sysctl:
+        name: net.ipv4.ip_nonlocal_bind
+        value: "1"
+        state: present
+        reload: yes
+
+    - name: Ensure keepalived config directory exists
+      ansible.builtin.file:
+        path: /etc/keepalived
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Deploy fixed keepalived.conf
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/keepalived.conf
+        dest: /etc/keepalived/keepalived.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart keepalived
+
+    - name: Deploy keepalived health check scripts
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_bind.sh
+        dest: /usr/local/bin/check_bind.sh
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart keepalived
+
+    - name: Deploy keepalived health check scripts (chrony)
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_chrony.sh
+        dest: /usr/local/bin/check_chrony.sh
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart keepalived
+
+    - name: Deploy keepalived health check scripts (dhcp)
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_dhcp.sh
+        dest: /usr/local/bin/check_dhcp.sh
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart keepalived
+
+    - name: Deploy keepalived health check scripts (haproxy)
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_haproxy.sh
+        dest: /usr/local/bin/check_haproxy.sh
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart keepalived
+
+    - name: Ensure keepalived service is enabled and running
+      ansible.builtin.systemd:
+        name: keepalived
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: Restart keepalived
+      ansible.builtin.systemd:
+        name: keepalived
+        state: restarted
