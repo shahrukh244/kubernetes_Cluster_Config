@@ -45,3 +45,9 @@
       when: "'UsePAM yes' not in sshd_config"
       notify: Restart SSH
 
+  handlers:
+
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
