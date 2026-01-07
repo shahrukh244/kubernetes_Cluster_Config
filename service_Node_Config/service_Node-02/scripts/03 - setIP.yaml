@@ -1,0 +1,58 @@
+---
+- name: Netplan Config Installer
+  hosts: localhost
+  become: true
+  gather_facts: true
+
+  vars:
+    netplan_src_dir: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/network-ip
+    netplan_files:
+      - ens32.yaml
+      - ens33.yaml
+
+  tasks:
+
+    # -------- Remove old netplan file --------
+    - name: Remove old cloud-init netplan file if exists
+      ansible.builtin.file:
+        path: /etc/netplan/50-cloud-init.yaml
+        state: absent
+      register: old_netplan_removal
+
+    - name: Show old netplan removal status
+      ansible.builtin.debug:
+        msg: "{{ '[+] Removed old netplan file' if old_netplan_removal.changed else '[*] No old netplan file found' }}"
+
+    # -------- Check source files --------
+    - name: Check if netplan source files exist
+      ansible.builtin.stat:
+        path: "{{ netplan_src_dir }}/{{ item }}"
+      loop: "{{ netplan_files }}"
+      register: netplan_sources
+
+    # -------- Copy netplan files --------
+    - name: Copy netplan files to /etc/netplan/
+      ansible.builtin.copy:
+        src: "{{ netplan_src_dir }}/{{ item.item }}"
+        dest: "/etc/netplan/{{ item.item }}"
+        owner: root
+        group: root
+        mode: "0600"
+      loop: "{{ netplan_sources.results }}"
+      when: item.stat.exists
+      notify: Apply netplan
+
+    # -------- Show copy result --------
+    - name: Show netplan copy results
+      ansible.builtin.debug:
+        msg: >
+          {{ '[+] Copied ' ~ item.item ~ ' → /etc/netplan/'
+             if item.stat.exists
+             else '[-] Source file missing: ' ~ item.item }}
+      loop: "{{ netplan_sources.results }}"
+
+  handlers:
+
+    - name: Apply netplan
+      ansible.builtin.command: netplan apply
+      listen: Apply netplan
