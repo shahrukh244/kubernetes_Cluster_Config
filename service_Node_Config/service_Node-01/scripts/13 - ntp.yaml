@@ -1,6 +1,6 @@
 ---
 - name: Chrony & Timezone Setup (Safe, Verified)
-  hosts: localhost
+  hosts: svc-1.kube.lan
   become: true
   gather_facts: true
 
@@ -60,3 +60,4 @@
         state: restarted
         enabled: true
       when: chrony_validate.rc == 0
+
