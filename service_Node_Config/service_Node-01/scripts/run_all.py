@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 # Directory where this script is located
@@ -53,6 +54,8 @@ def run_script(script_name):
         sys.exit(result.returncode)
 
     print(f"✅ Completed: {script_name}")
+    print("⏳ Sleeping for 5 seconds before next script...\n")
+    time.sleep(5)
 
 def main():
     for script in SCRIPTS:
