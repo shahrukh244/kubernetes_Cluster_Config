@@ -1,7 +1,8 @@
 ---
 - name: Full Ubuntu system setup with services
-  hosts: localhost
+  hosts: svc-1.kube.lan
   become: true
+  gather_facts: true
 
   tasks:
 
@@ -51,3 +52,4 @@
       ansible.builtin.service:
         name: ssh
         state: restarted
+
