@@ -1,6 +1,6 @@
 ---
 - name: HAProxy Setup (Safe, Verified)
-  hosts: localhost
+  hosts: svc-1.kube.lan
   become: true
   gather_facts: true
 
@@ -49,3 +49,4 @@
         state: restarted
         enabled: true
       when: haproxy_validate.rc == 0
+
