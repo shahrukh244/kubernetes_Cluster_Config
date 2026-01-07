@@ -1,7 +1,8 @@
 ---
 - name: DHCP Server Setup (Safe, Verified, Auto-Detect Interface)
-  hosts: localhost
+  hosts: svc-2.kube.lan
   become: true
+  gather_facts: true
 
   tasks:
 
