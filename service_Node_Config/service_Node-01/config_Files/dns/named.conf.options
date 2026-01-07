@@ -1,9 +1,15 @@
 options {
     directory "/var/cache/bind";
 
-    listen-on port 53 { 127.0.0.1; 10.0.0.1; 10.0.0.11; };
+    listen-on port 53 { any; };
+    listen-on-v6 { none; };
+
     allow-query { localhost; 10.0.0.0/24; };
+    allow-recursion { localhost; 10.0.0.0/24; };
+
     recursion yes;
+
+    allow-transfer { none; };
 
     forwarders {
         8.8.8.8;
@@ -12,4 +18,6 @@ options {
     };
 
     dnssec-validation auto;
+
+    version "not disclosed";
 };
