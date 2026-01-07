@@ -1,0 +1,40 @@
+---
+- name: Full Ubuntu system setup with services
+  hosts: localhost
+  become: true
+
+  tasks:
+    # -------- SWAP (smart & idempotent) --------
+
+    # 1. Check if swap is enabled at runtime
+    - name: Check runtime swap status
+      ansible.builtin.command: swapon --noheadings
+      register: swap_runtime
+      changed_when: false
+      failed_when: false
+
+    # 2. Disable swap ONLY if enabled
+    - name: Disable swap if enabled
+      ansible.builtin.command: swapoff -a
+      when: swap_runtime.stdout | trim != ""
+
+    # 3. Detect ACTIVE (not commented) swap entries in fstab
+    - name: Detect active swap entries in fstab
+      ansible.builtin.shell: |
+        awk '!/^[[:space:]]*#/ && $0 ~ /swap/ { print }' /etc/fstab
+      register: swap_fstab_active
+      changed_when: false
+
+    # 4. Comment all active swap entries ONLY if any exist
+    - name: Comment all active swap entries in fstab
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        regexp: '^[^#].*swap'
+        line: '#\g<0>'
+        backrefs: yes
+      when: swap_fstab_active.stdout | trim != ""
+
+    # 5. Final verification (read-only)
+    - name: Final swap verification
+      ansible.builtin.command: swapon --show
+      changed_when: false

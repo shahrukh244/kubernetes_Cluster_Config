@@ -1,0 +1,48 @@
+---
+- name: Full Ubuntu system setup with Keepalived
+  hosts: localhost
+  become: true
+
+  tasks:
+        # -------- BIND --------
+    - name: Install BIND9
+      ansible.builtin.apt:
+        name: bind9
+        state: present
+        update_cache: yes
+
+    - name: Ensure BIND zones directory exists
+      ansible.builtin.file:
+        path: /etc/bind/zones
+        state: directory
+        mode: 0755
+
+    - name: Copy named.conf.options
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/dns/named.conf.options
+        dest: /etc/bind/named.conf.options
+        backup: yes
+
+    - name: Copy named.conf.local
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/dns/named.conf.local
+        dest: /etc/bind/named.conf.local
+        backup: yes
+
+    - name: Copy forward zone
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/dns/zones/db.kube.lan
+        dest: /etc/bind/zones/db.kube.lan
+        backup: yes
+
+    - name: Copy reverse zone
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/dns/zones/db.reverse
+        dest: /etc/bind/zones/db.reverse
+        backup: yes
+
+    - name: Restart BIND9
+      ansible.builtin.service:
+        name: bind9
+        state: restarted
+        enabled: true
