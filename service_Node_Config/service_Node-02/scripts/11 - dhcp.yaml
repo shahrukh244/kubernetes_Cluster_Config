@@ -1,0 +1,70 @@
+---
+- name: DHCP Server Setup (Safe, Verified, Auto-Detect Interface)
+  hosts: localhost
+  become: true
+
+  tasks:
+
+    # ---------------- Detect correct interface ----------------
+
+    - name: Detect interface for DHCP subnet 10.0.0.0/24
+      shell: |
+        ip -o -4 addr \
+        | awk '$4 ~ /^10\.0\.0\./ {print $2}' \
+        | sort -u \
+        | tr '\n' ' '
+      register: dhcp_iface
+      changed_when: false
+      failed_when: dhcp_iface.stdout | trim == ""
+
+    - name: Normalize detected interface
+      set_fact:
+        dhcp_interface: "{{ dhcp_iface.stdout | trim }}"
+
+    - name: Show detected DHCP interface
+      ansible.builtin.debug:
+        msg: "DHCP will bind to interface: {{ dhcp_interface }}"
+
+    # ---------------- Install DHCP server ----------------
+
+    - name: Install ISC DHCP Server (only if missing)
+      ansible.builtin.apt:
+        name: isc-dhcp-server
+        state: present
+        update_cache: yes
+
+    # ---------------- Configure interface ----------------
+
+    - name: Configure DHCP interface dynamically
+      ansible.builtin.lineinfile:
+        path: /etc/default/isc-dhcp-server
+        regexp: '^INTERFACESv4='
+        line: 'INTERFACESv4="{{ dhcp_interface }}"'
+        create: yes
+        backup: yes
+
+    # ---------------- Deploy configuration ----------------
+
+    - name: Copy dhcpd.conf
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/dhcp/dhcpd.conf
+        dest: /etc/dhcp/dhcpd.conf
+        owner: root
+        group: root
+        mode: "0644"
+        backup: yes
+
+    # ---------------- Validate configuration ----------------
+
+    - name: Validate DHCP configuration
+      ansible.builtin.command:
+        cmd: dhcpd -t -cf /etc/dhcp/dhcpd.conf
+      changed_when: false
+
+    # ---------------- Start service ----------------
+
+    - name: Enable and restart DHCP server
+      ansible.builtin.service:
+        name: isc-dhcp-server
+        state: restarted
+        enabled: true
