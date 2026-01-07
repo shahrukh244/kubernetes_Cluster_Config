@@ -36,15 +36,16 @@
     # ----------------------------
     # 3. Copy ansible.cfg if missing or different
     # ----------------------------
+    
     - name: Check if ansible.cfg exists in repo
       ansible.builtin.stat:
         path: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/ansible/ansible.cfg
-      register: ansible_cfg_repo
+      register: ansible_cfg
 
     - name: Fail if ansible.cfg is missing in repo
       ansible.builtin.fail:
         msg: "ansible.cfg not found in repo!"
-      when: not ansible_cfg_repo.stat.exists
+      when: not ansible_cfg.stat.exists
 
     - name: Copy ansible.cfg to /root/.ansible.cfg if missing or changed
       ansible.builtin.copy:
