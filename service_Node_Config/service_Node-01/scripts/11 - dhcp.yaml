@@ -1,7 +1,8 @@
 ---
 - name: DHCP Server Setup (Safe, Verified, Auto-Detect Interface)
-  hosts: localhost
+  hosts: svc-1.kube.lan
   become: true
+  gather_facts: true
 
   tasks:
 
@@ -68,3 +69,4 @@
         name: isc-dhcp-server
         state: restarted
         enabled: true
+
