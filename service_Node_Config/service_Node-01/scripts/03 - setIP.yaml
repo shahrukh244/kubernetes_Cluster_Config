@@ -4,10 +4,16 @@
   become: true
   gather_facts: true
 
+  vars:
+    netplan_src_dir: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/network-ip
+    netplan_files:
+      - ens32.yaml
+      - ens33.yaml
+
   tasks:
 
     # -------- Remove old netplan file --------
-    - name: Remove old netplan file if exists
+    - name: Remove old cloud-init netplan file if exists
       ansible.builtin.file:
         path: /etc/netplan/50-cloud-init.yaml
         state: absent
@@ -17,46 +23,36 @@
       ansible.builtin.debug:
         msg: "{{ '[+] Removed old netplan file' if old_netplan_removal.changed else '[*] No old netplan file found' }}"
 
-    # -------- Copy new netplan files --------
-    - name: Copy ens32.yaml to /etc/netplan/
+    # -------- Check source files --------
+    - name: Check if netplan source files exist
+      ansible.builtin.stat:
+        path: "{{ netplan_src_dir }}/{{ item }}"
+      loop: "{{ netplan_files }}"
+      register: netplan_sources
+
+    # -------- Copy netplan files --------
+    - name: Copy netplan files to /etc/netplan/
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/network-ip/ens32.yaml
-        dest: /etc/netplan/ens32.yaml
+        src: "{{ netplan_src_dir }}/{{ item.item }}"
+        dest: "/etc/netplan/{{ item.item }}"
         owner: root
         group: root
         mode: "0600"
-      register: ens32_copy
-      ignore_errors: yes
+      loop: "{{ netplan_sources.results }}"
+      when: item.stat.exists
+      notify: Apply netplan
 
-    - name: Copy ens33.yaml to /etc/netplan/
-      ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/network-ip/ens33.yaml
-        dest: /etc/netplan/ens33.yaml
-        owner: root
-        group: root
-        mode: "0600"
-      register: ens33_copy
-      ignore_errors: yes
-
+    # -------- Show copy result --------
     - name: Show netplan copy results
       ansible.builtin.debug:
         msg: >
-          {% if item.changed %}
-            [+] Copied {{ item.item }} → /etc/netplan/
-          {% else %}
-            [-] Source file not found or unchanged: {{ item.item }}
-          {% endif %}
-      loop:
-        - "{{ ens32_copy }}"
-        - "{{ ens33_copy }}"
+          {{ '[+] Copied ' ~ item.item ~ ' → /etc/netplan/'
+             if item.stat.exists
+             else '[-] Source file missing: ' ~ item.item }}
+      loop: "{{ netplan_sources.results }}"
 
-    # -------- Apply netplan --------
-    - name: Apply netplan configuration
+  handlers:
+
+    - name: Apply netplan
       ansible.builtin.command: netplan apply
-      register: netplan_apply
-      changed_when: true
-
-    - name: Show netplan apply result
-      ansible.builtin.debug:
-        msg: "[+] Netplan applied successfully"
-
+      listen: Apply netplan
