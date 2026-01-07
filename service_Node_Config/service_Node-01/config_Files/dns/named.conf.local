@@ -1,13 +1,17 @@
 zone "kube.lan" {
     type master;
     file "/etc/bind/zones/db.kube.lan";
-    allow-transfer { 10.0.0.12; };   # Allow slave to pull updates
-    also-notify { 10.0.0.12; };      # Notify slave on changes
+
+    notify yes;
+    allow-transfer { 10.0.0.11; 10.0.0.12; };
+    also-notify  { 10.0.0.11; 10.0.0.12; };
 };
 
 zone "0.0.10.in-addr.arpa" {
     type master;
     file "/etc/bind/zones/db.reverse";
-    allow-transfer { 10.0.0.12; };
-    also-notify { 10.0.0.12; };
+
+    notify yes;
+    allow-transfer { 10.0.0.11; 10.0.0.12; };
+    also-notify  { 10.0.0.11; 10.0.0.12; };
 };
