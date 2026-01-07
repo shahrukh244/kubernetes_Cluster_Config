@@ -29,18 +29,6 @@
         dest: /etc/bind/named.conf.local
         backup: yes
 
-    - name: Copy forward zone
-      ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/dns/zones/db.kube.lan
-        dest: /etc/bind/zones/db.kube.lan
-        backup: yes
-
-    - name: Copy reverse zone
-      ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/dns/zones/db.reverse
-        dest: /etc/bind/zones/db.reverse
-        backup: yes
-
     - name: Restart BIND9
       ansible.builtin.service:
         name: bind9
