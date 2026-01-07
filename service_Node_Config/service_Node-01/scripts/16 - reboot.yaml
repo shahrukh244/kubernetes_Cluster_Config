@@ -1,8 +1,8 @@
 ---
 - name: Reboot System in 15sec
-  hosts: localhost
+  hosts: svc-1.kube.lan
   become: true
-  gather_facts: false
+  gather_facts: true
 
   tasks:
 
@@ -19,4 +19,5 @@
     - name: Reboot the system
       ansible.builtin.command: shutdown -r now
       async: 1
+
       poll: 0
