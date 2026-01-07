@@ -1,0 +1,86 @@
+---
+- name: IP Forwarding & NAT Setup (Safe, Verified, Auto-Detect Interfaces)
+  hosts: localhost
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    # -------- Detect LAN interface (10.0.0.0/24) --------
+    - name: Detect LAN interface (10.0.0.0/24)
+      shell: |
+        ip -o -4 addr show | awk '$4 ~ /^10\.0\.0\./ {print $2; exit}'
+      register: lan_if
+      changed_when: false
+
+    - name: Normalize LAN interface
+      set_fact:
+        lan_iface: "{{ lan_if.stdout | trim }}"
+
+    - name: Show LAN interface
+      debug:
+        msg: "LAN interface detected: {{ lan_iface }}"
+
+    # -------- Detect WAN interface (default route) --------
+    - name: Detect WAN interface (default route)
+      shell: |
+        ip route show default | awk '{print $5}'
+      register: wan_if
+      changed_when: false
+
+    - name: Normalize WAN interface
+      set_fact:
+        wan_iface: "{{ wan_if.stdout | trim }}"
+
+    - name: Show WAN interface
+      debug:
+        msg: "WAN interface detected: {{ wan_iface }}"
+
+    # -------- Enable IP Forwarding --------
+    - name: Enable IPv4 forwarding (runtime + persistent)
+      ansible.builtin.sysctl:
+        name: net.ipv4.ip_forward
+        value: "1"
+        state: present
+        reload: yes
+
+    # -------- Verify iptables --------
+    - name: Verify iptables is available
+      ansible.builtin.command: iptables --version
+      register: iptables_check
+      changed_when: false
+
+    # -------- NAT & FORWARD Rules --------
+    - name: NAT POSTROUTING (MASQUERADE)
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        source: 10.0.0.0/24
+        out_interface: "{{ wan_iface }}"
+        jump: MASQUERADE
+
+    - name: Allow LAN → WAN forwarding
+      ansible.builtin.iptables:
+        chain: FORWARD
+        in_interface: "{{ lan_iface }}"
+        out_interface: "{{ wan_iface }}"
+        jump: ACCEPT
+
+    - name: Allow established WAN → LAN traffic
+      ansible.builtin.iptables:
+        chain: FORWARD
+        in_interface: "{{ wan_iface }}"
+        out_interface: "{{ lan_iface }}"
+        ctstate: RELATED,ESTABLISHED
+        jump: ACCEPT
+
+    # -------- Persist Rules --------
+    - name: Install iptables-persistent (only if missing)
+      ansible.builtin.apt:
+        name: iptables-persistent
+        state: present
+        update_cache: yes
+
+    - name: Save iptables rules
+      ansible.builtin.command: netfilter-persistent save
+      ignore_errors: yes

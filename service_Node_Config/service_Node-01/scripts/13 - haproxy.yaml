@@ -1,0 +1,51 @@
+---
+- name: HAProxy Setup (Safe, Verified)
+  hosts: localhost
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    # -------- HAProxy (Safe, Verified) --------
+
+    - name: Check if HAProxy is installed
+      ansible.builtin.command: haproxy -v
+      register: haproxy_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install HAProxy (only if missing)
+      ansible.builtin.apt:
+        name: haproxy
+        state: present
+        update_cache: yes
+      when: haproxy_check.rc != 0
+
+    - name: Ensure HAProxy config directory exists
+      ansible.builtin.file:
+        path: /etc/haproxy
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Copy haproxy.cfg
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/haproxy/haproxy.cfg
+        dest: /etc/haproxy/haproxy.cfg
+        owner: root
+        group: root
+        mode: "0644"
+        backup: yes
+
+    - name: Validate HAProxy configuration
+      ansible.builtin.command: haproxy -c -f /etc/haproxy/haproxy.cfg
+      register: haproxy_validate
+      changed_when: false
+
+    - name: Enable and restart HAProxy (only if config is valid)
+      ansible.builtin.service:
+        name: haproxy
+        state: restarted
+        enabled: true
+      when: haproxy_validate.rc == 0

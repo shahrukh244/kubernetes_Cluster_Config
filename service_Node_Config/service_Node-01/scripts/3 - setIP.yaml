@@ -1,0 +1,62 @@
+---
+- name: Netplan Config Installer
+  hosts: localhost
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    # -------- Remove old netplan file --------
+    - name: Remove old netplan file if exists
+      ansible.builtin.file:
+        path: /etc/netplan/50-cloud-init.yaml
+        state: absent
+      register: old_netplan_removal
+
+    - name: Show old netplan removal status
+      ansible.builtin.debug:
+        msg: "{{ '[+] Removed old netplan file' if old_netplan_removal.changed else '[*] No old netplan file found' }}"
+
+    # -------- Copy new netplan files --------
+    - name: Copy ens32.yaml to /etc/netplan/
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/network-ip/ens32.yaml
+        dest: /etc/netplan/ens32.yaml
+        owner: root
+        group: root
+        mode: "0600"
+      register: ens32_copy
+      ignore_errors: yes
+
+    - name: Copy ens33.yaml to /etc/netplan/
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/network-ip/ens33.yaml
+        dest: /etc/netplan/ens33.yaml
+        owner: root
+        group: root
+        mode: "0600"
+      register: ens33_copy
+      ignore_errors: yes
+
+    - name: Show netplan copy results
+      ansible.builtin.debug:
+        msg: >
+          {% if item.changed %}
+            [+] Copied {{ item.item }} → /etc/netplan/
+          {% else %}
+            [-] Source file not found or unchanged: {{ item.item }}
+          {% endif %}
+      loop:
+        - "{{ ens32_copy }}"
+        - "{{ ens33_copy }}"
+
+    # -------- Apply netplan --------
+    - name: Apply netplan configuration
+      ansible.builtin.command: netplan apply
+      register: netplan_apply
+      changed_when: true
+
+    - name: Show netplan apply result
+      ansible.builtin.debug:
+        msg: "[+] Netplan applied successfully"
+
