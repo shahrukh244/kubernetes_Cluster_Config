@@ -38,7 +38,7 @@
     # ----------------------------
     - name: Check if ansible.cfg exists in repo
       ansible.builtin.stat:
-        path: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/ansible/ansible.cfg
+        path: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/ansible/ansible.cfg
       register: ansible_cfg_repo
 
     - name: Fail if ansible.cfg is missing in repo
@@ -48,7 +48,7 @@
 
     - name: Copy ansible.cfg to /root/.ansible.cfg if missing or changed
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/ansible/ansible.cfg
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/ansible/ansible.cfg
         dest: /root/.ansible.cfg
         owner: root
         group: root
@@ -65,12 +65,12 @@
     # ----------------------------
     - name: Check if inventory exists in repo
       ansible.builtin.stat:
-        path: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/ansible/hosts
+        path: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/ansible/hosts
       register: inventory_repo
 
     - name: Copy inventory if exists in repo
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/ansible/hosts
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/ansible/hosts
         dest: /root/.ansible/hosts
         owner: root
         group: root
