@@ -3,14 +3,14 @@
 # Service Nodes
 # =========================
 [service_nodes]
-svc-1.kube.lan ansible_connection=local ansible_python_interpreter=/usr/bin/python3
-svc-2.kube.lan ansible_host=10.0.0.52
+svc-1.kube.lan ansible_host=10.0.0.11
+svc-2.kube.lan ansible_host=10.0.0.12
 
 # =========================
 # Bastion / Jump Node
 # =========================
 [bastion]
-bastion.kube.lan ansible_host=10.0.0.99
+bastion.kube.lan ansible_host=10.0.0.100
 
 # =========================
 # Kubernetes Masters
