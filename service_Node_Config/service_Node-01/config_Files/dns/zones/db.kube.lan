@@ -1,23 +1,40 @@
-$TTL    604800
-@       IN      SOA     svc-1.kube.lan. contact.kube.lan. (
-                  1 ; Serial
-             604800 ; Refresh
-              86400 ; Retry
-            2419200 ; Expire
-             604800 ; Minimum
+$TTL 604800
+@   IN  SOA svc-1.kube.lan. contact.kube.lan. (
+        2026010701 ; Serial (YYYYMMDDNN)
+        604800     ; Refresh
+        86400      ; Retry
+        2419200    ; Expire
+        604800     ; Negative Cache TTL
 )
-        IN      NS      svc-1.kube.lan.
 
-svc-1.kube.lan.          IN      A       10.0.0.1
+; Name Server
+@               IN  NS      svc-1.kube.lan.
 
-; Bastion Node
-bastion.kube.lan.         IN      A      10.0.0.100
+; =============================
+; Keepalived Virtual IP (VIP)
+; =============================
+svc.kube.lan.           IN  A       10.0.0.1
 
+; =============================
+; SVC Nodes (Real IPs)
+; =============================
+svc-1.kube.lan.         IN  A       10.0.0.11
+svc-2.kube.lan.         IN  A       10.0.0.12
+
+; =============================
+; Bastion
+; =============================
+bastion.kube.lan.       IN  A       10.0.0.100
+
+; =============================
 ; Control Plane Nodes
-kube-cp-1.kube.lan.         IN      A      10.0.0.211
-kube-cp-2.kube.lan.         IN      A      10.0.0.212
-kube-cp-3.kube.lan.         IN      A      10.0.0.213
+; =============================
+kube-cp-1.kube.lan.     IN  A       10.0.0.211
+kube-cp-2.kube.lan.     IN  A       10.0.0.212
+kube-cp-3.kube.lan.     IN  A       10.0.0.213
 
+; =============================
 ; Worker Nodes
-kube-w-1.kube.lan.          IN      A      10.0.0.221
-kube-w-2.kube.lan.          IN      A      10.0.0.222
+; =============================
+kube-w-1.kube.lan.      IN  A       10.0.0.221
+kube-w-2.kube.lan.      IN  A       10.0.0.222
