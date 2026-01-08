@@ -1,40 +1,10 @@
 ---
-- name: IP Forwarding & NAT Setup (Safe, Verified, Auto-Detect Interfaces)
+- name: IP Forwarding & NAT Setup
   hosts: localhost
   become: true
-  gather_facts: true
+  gather_facts: false
 
   tasks:
-
-    # -------- Detect LAN interface (10.0.0.0/24) --------
-    - name: Detect LAN interface (10.0.0.0/24)
-      shell: |
-        ip -o -4 addr show | awk '$4 ~ /^10\.0\.0\./ {print $2; exit}'
-      register: lan_if
-      changed_when: false
-
-    - name: Normalize LAN interface
-      set_fact:
-        lan_iface: "{{ lan_if.stdout | trim }}"
-
-    - name: Show LAN interface
-      debug:
-        msg: "LAN interface detected: {{ lan_iface }}"
-
-    # -------- Detect WAN interface (default route) --------
-    - name: Detect WAN interface (default route)
-      shell: |
-        ip route show default | awk '{print $5}'
-      register: wan_if
-      changed_when: false
-
-    - name: Normalize WAN interface
-      set_fact:
-        wan_iface: "{{ wan_if.stdout | trim }}"
-
-    - name: Show WAN interface
-      debug:
-        msg: "WAN interface detected: {{ wan_iface }}"
 
     # -------- Enable IP Forwarding --------
     - name: Enable IPv4 forwarding (runtime + persistent)
@@ -44,33 +14,27 @@
         state: present
         reload: yes
 
-    # -------- Verify iptables --------
-    - name: Verify iptables is available
-      ansible.builtin.command: iptables --version
-      register: iptables_check
-      changed_when: false
-
     # -------- NAT & FORWARD Rules --------
-    - name: NAT POSTROUTING (MASQUERADE)
+    - name: NAT POSTROUTING (MASQUERADE for LAN → WAN)
       ansible.builtin.iptables:
         table: nat
         chain: POSTROUTING
         source: 10.0.0.0/24
-        out_interface: "{{ wan_iface }}"
+        out_interface: ens32
         jump: MASQUERADE
 
-    - name: Allow LAN → WAN forwarding
+    - name: Allow LAN (ens33) → WAN (ens32) forwarding
       ansible.builtin.iptables:
         chain: FORWARD
-        in_interface: "{{ lan_iface }}"
-        out_interface: "{{ wan_iface }}"
+        in_interface: ens33
+        out_interface: ens32
         jump: ACCEPT
 
-    - name: Allow established WAN → LAN traffic
+    - name: Allow established WAN (ens32) → LAN (ens33) traffic
       ansible.builtin.iptables:
         chain: FORWARD
-        in_interface: "{{ wan_iface }}"
-        out_interface: "{{ lan_iface }}"
+        in_interface: ens32
+        out_interface: ens33
         ctstate: RELATED,ESTABLISHED
         jump: ACCEPT
 
@@ -81,6 +45,7 @@
         state: present
         update_cache: yes
 
-    - name: Save iptables rules
-      ansible.builtin.command: netfilter-persistent save
-      ignore_errors: yes
+    - name: Save iptables rules persistently
+      ansible.builtin.command:
+        cmd: netfilter-persistent save
+      changed_when: false
