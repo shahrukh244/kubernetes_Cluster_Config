@@ -1,7 +1,6 @@
 ---
 - name: DHCP Server Setup (Safe, Verified, Auto-Detect Interface)
   hosts: localhost
-  connection: local
   become: true
   gather_facts: true
 
