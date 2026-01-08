@@ -1,6 +1,6 @@
 ---
 - name: Full Ubuntu system setup with services
-  hosts: svc-2.kube.lan
+  hosts: localhost
   become: true
   gather_facts: true
 
