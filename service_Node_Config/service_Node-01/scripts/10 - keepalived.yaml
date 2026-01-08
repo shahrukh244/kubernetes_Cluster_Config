@@ -1,6 +1,6 @@
 ---
 - name: NFS Server Setup (Safe, Verified)
-  hosts: svc-1.kube.lan
+  hosts: localhost
   become: true
   gather_facts: true
 
@@ -52,4 +52,5 @@
         state: restarted
         enabled: true
       when: exportfs_validate.rc == 0
+
 
