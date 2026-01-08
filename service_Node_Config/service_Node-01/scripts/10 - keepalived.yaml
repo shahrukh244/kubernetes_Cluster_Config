@@ -1,56 +1,84 @@
 ---
-- name: NFS Server Setup (Safe, Verified)
+- name: Full Ubuntu system setup with Keepalived
   hosts: localhost
   become: true
   gather_facts: true
 
   tasks:
-
-    # -------- NFS (Safe, Verified) --------
-
-    - name: Check if NFS server is installed
-      ansible.builtin.command: exportfs -v
-      register: nfs_check
-      failed_when: false
-      changed_when: false
-
-    - name: Install NFS server (only if missing)
+    - name: Install keepalived
       ansible.builtin.apt:
-        name: nfs-kernel-server
+        name: keepalived
         state: present
         update_cache: yes
-      when: nfs_check.rc != 0
 
-    - name: Ensure NFS export directories exist
+    - name: Enable ip_nonlocal_bind sysctl
+      ansible.builtin.sysctl:
+        name: net.ipv4.ip_nonlocal_bind
+        value: "1"
+        state: present
+        reload: yes
+
+    - name: Ensure keepalived config directory exists
       ansible.builtin.file:
-        path: "{{ item }}"
+        path: /etc/keepalived
         state: directory
-        owner: 1000
-        group: 1000
-        mode: "0777"
-      loop:
-        - /shares/kubernetes/StorageClass/Delete
-        - /shares/kubernetes/StorageClass/Retain
+        owner: root
+        group: root
+        mode: "0755"
 
-    - name: Copy /etc/exports from file
+    - name: Deploy fixed keepalived.conf
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/nfs/export
-        dest: /etc/exports
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/keepalived.conf
+        dest: /etc/keepalived/keepalived.conf
         owner: root
         group: root
         mode: "0644"
-        backup: yes
+      notify: Restart keepalived
 
-    - name: Validate NFS exports
-      ansible.builtin.command: exportfs -rav
-      register: exportfs_validate
-      changed_when: false
+    - name: Deploy keepalived health check scripts
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_bind.sh
+        dest: /usr/local/bin/check_bind.sh
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart keepalived
 
-    - name: Enable and restart NFS server (only if exports valid)
-      ansible.builtin.service:
-        name: nfs-kernel-server
+    - name: Deploy keepalived health check scripts (chrony)
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_chrony.sh
+        dest: /usr/local/bin/check_chrony.sh
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart keepalived
+
+    - name: Deploy keepalived health check scripts (dhcp)
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_dhcp.sh
+        dest: /usr/local/bin/check_dhcp.sh
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart keepalived
+
+    - name: Deploy keepalived health check scripts (haproxy)
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_haproxy.sh
+        dest: /usr/local/bin/check_haproxy.sh
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart keepalived
+
+    - name: Ensure keepalived service is enabled and running
+      ansible.builtin.systemd:
+        name: keepalived
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: Restart keepalived
+      ansible.builtin.systemd:
+        name: keepalived
         state: restarted
-        enabled: true
-      when: exportfs_validate.rc == 0
-
-
