@@ -1,6 +1,6 @@
 ---
 - name: Full Ubuntu system setup with services
-  hosts: svc-1.kube.lan
+  hosts: localhost
   become: true
   gather_facts: true
 
@@ -18,4 +18,5 @@
         state: stopped
         enabled: false
       when: ufw_service.stat.exists
+
 
