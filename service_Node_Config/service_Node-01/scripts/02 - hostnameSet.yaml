@@ -1,6 +1,6 @@
 ---
 - name: Hostname Setup
-  hosts: svc-1.kube.lan
+  hosts: localhost
   become: true
   gather_facts: true
 
@@ -14,5 +14,6 @@
     - name: Show hostname change
       ansible.builtin.debug:
         msg: "[+] Hostname set to svc-1.kube.lan"
+
 
 
