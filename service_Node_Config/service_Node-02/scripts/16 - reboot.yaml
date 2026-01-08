@@ -1,6 +1,6 @@
 ---
 - name: Reboot System in 15sec
-  hosts: svc-2.kube.lan
+  hosts: localhost
   become: true
   gather_facts: true
 
