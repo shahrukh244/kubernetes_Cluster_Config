@@ -1,9 +1,9 @@
 ---
 - name: Full Ubuntu system setup with Keepalived
-  hosts: svc-2.kube.lan
+  hosts: localhost
   become: true
   gather_facts: true
-
+  
   tasks:
     - name: Install keepalived
       ansible.builtin.apt:
