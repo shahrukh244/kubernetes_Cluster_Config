@@ -3,7 +3,7 @@
   hosts: localhost
   become: true
   gather_facts: true
-  
+
   tasks:
     - name: Install keepalived
       ansible.builtin.apt:
@@ -37,7 +37,7 @@
 
     - name: Deploy keepalived health check scripts
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_bind.sh
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_bind9/check_bind.sh
         dest: /usr/local/bin/check_bind.sh
         owner: root
         group: root
@@ -46,7 +46,7 @@
 
     - name: Deploy keepalived health check scripts (chrony)
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_chrony.sh
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_chrony/check_chrony.sh
         dest: /usr/local/bin/check_chrony.sh
         owner: root
         group: root
@@ -55,7 +55,7 @@
 
     - name: Deploy keepalived health check scripts (dhcp)
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_dhcp.sh
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_dhcp/check_dhcp.sh
         dest: /usr/local/bin/check_dhcp.sh
         owner: root
         group: root
@@ -64,7 +64,7 @@
 
     - name: Deploy keepalived health check scripts (haproxy)
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_haproxy.sh
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_haproxy/check_haproxy.sh
         dest: /usr/local/bin/check_haproxy.sh
         owner: root
         group: root
