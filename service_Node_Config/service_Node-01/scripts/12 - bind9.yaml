@@ -1,6 +1,6 @@
 ---
 - name: Full Ubuntu system setup with Keepalived
-  hosts: svc-1.kube.lan
+  hosts: localhost
   become: true
   gather_facts: true
 
@@ -47,4 +47,5 @@
         name: bind9
         state: restarted
         enabled: true
+
 
