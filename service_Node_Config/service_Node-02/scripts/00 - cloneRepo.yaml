@@ -1,6 +1,6 @@
 ---
 - name: Clone Kubernetes Cluster Config Repository
-  hosts: svc-2.kube.lan
+  hosts: localhost
   become: true
   gather_facts: true
 
