@@ -1,7 +1,7 @@
-# Kubernetes StorageClass - DELETE (dynamic volumes)
+# Kubernetes StorageClass - DELETE
 /shares/kubernetes/StorageClass/Delete \
-*(rw,sync,no_subtree_check,no_root_squash)
+10.0.0.0/24(rw,sync,all_squash,anonuid=1000,anongid=1000,no_subtree_check)
 
-# Kubernetes StorageClass - RETAIN (persistent data)
+# Kubernetes StorageClass - RETAIN
 /shares/kubernetes/StorageClass/Retain \
-*(rw,sync,no_subtree_check,no_root_squash)
+10.0.0.0/24(rw,sync,all_squash,anonuid=1000,anongid=1000,no_subtree_check)
