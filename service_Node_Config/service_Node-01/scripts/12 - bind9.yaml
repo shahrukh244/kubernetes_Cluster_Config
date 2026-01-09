@@ -42,10 +42,17 @@
         dest: /etc/bind/zones/db.reverse
         backup: yes
 
+    - name: Touch and set permissions on check_bind.log
+      ansible.builtin.file:
+        path: /var/log/check_bind.log
+        state: touch
+        mode: '0644'
+
     - name: Restart BIND9
       ansible.builtin.service:
         name: bind9
         state: restarted
         enabled: true
+
 
 
