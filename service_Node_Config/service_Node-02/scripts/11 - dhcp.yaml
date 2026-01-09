@@ -27,6 +27,12 @@
         mode: "0644"
         backup: yes
 
+    - name: Touch and set permissions on check_dhcp.log
+      ansible.builtin.file:
+        path: /var/log/check_dhcp.log
+        state: touch
+        mode: '0644'
+
     - name: Validate DHCP configuration
       ansible.builtin.command:
         cmd: dhcpd -t -cf /etc/dhcp/dhcpd.conf
