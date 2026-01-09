@@ -5,8 +5,14 @@ import sys
 import time
 from pathlib import Path
 
-# Directory where this script is located
-BASE_DIR = Path(__file__).resolve().parent
+# Get the current script's directory
+CURRENT_DIR = Path(__file__).resolve().parent
+
+# Define the two different paths relative to the current script
+# Current script is in: service_Node-02/scripts/
+# So to get to service_Node-01/scripts/: go up one level, then to service_Node-01/scripts
+BASE_DIR_01 = CURRENT_DIR.parent.parent / "service_Node-01" / "scripts"
+BASE_DIR_02 = CURRENT_DIR  # Scripts for node 02 are in the same directory as this script
 
 # Ordered list of scripts to execute
 SCRIPTS = [
@@ -29,10 +35,15 @@ SCRIPTS = [
 ]
 
 def run_script(script_name):
-    script_path = BASE_DIR / script_name
+    # Determine which base directory to use based on the script
+    if script_name == "01 - InstallAnsible.py":
+        script_path = BASE_DIR_01 / script_name
+    else:
+        script_path = BASE_DIR_02 / script_name
 
     if not script_path.exists():
         print(f"❌ Script not found: {script_name}")
+        print(f"   Looked for: {script_path}")
         sys.exit(1)
 
     print("\n" + "=" * 70)
