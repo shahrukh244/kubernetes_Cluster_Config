@@ -27,7 +27,7 @@
         mode: "0644"
         backup: yes
 
-    - name: Touch and set permissions on check_haproxy.log
+    - name: Touch and set permissions on check_dhcp.log
       ansible.builtin.file:
         path: /var/log/check_dhcp.log
         state: touch
@@ -43,4 +43,5 @@
         name: isc-dhcp-server
         state: restarted
         enabled: true
+
 
