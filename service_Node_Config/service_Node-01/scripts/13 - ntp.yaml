@@ -54,11 +54,18 @@
       register: chrony_validate
       changed_when: false
 
+    - name: Touch and set permissions on check_chrony.log
+      ansible.builtin.file:
+        path: /var/log/check_chrony.log
+        state: touch
+        mode: '0644'
+
     - name: Enable and restart chrony (only if config valid)
       ansible.builtin.service:
         name: chrony
         state: restarted
         enabled: true
       when: chrony_validate.rc == 0
+
 
 
