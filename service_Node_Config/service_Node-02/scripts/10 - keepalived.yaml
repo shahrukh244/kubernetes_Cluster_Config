@@ -35,6 +35,12 @@
         mode: "0644"
       notify: Restart keepalived
 
+    - name: Touch and set permissions on keepalived.log
+      ansible.builtin.file:
+        path: /var/log/keepalived.log
+        state: touch
+        mode: '0644'
+
     - name: Deploy keepalived health check scripts
       ansible.builtin.copy:
         src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/keepalived/check_bind9/check_bind.sh
