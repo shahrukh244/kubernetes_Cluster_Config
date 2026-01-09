@@ -43,6 +43,12 @@
       register: haproxy_validate
       changed_when: false
 
+    - name: Touch and set permissions on check_haproxy.log
+      ansible.builtin.file:
+        path: /var/log/check_haproxy.log
+        state: touch
+        mode: '0644'
+
     - name: Enable and restart HAProxy (only if config is valid)
       ansible.builtin.service:
         name: haproxy
