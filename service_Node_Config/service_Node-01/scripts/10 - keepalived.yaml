@@ -79,6 +79,15 @@
 
     - name: Deploy keepalived health check scripts (DRBD + NFS)
       ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_drbd-nfs/check_drbd.sh
+        dest: /usr/local/bin/check_drbd.sh
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart keepalived
+
+    - name: Deploy keepalived health check scripts (DRBD + NFS)
+      ansible.builtin.copy:
         src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_drbd-nfs/ha-backup.sh
         dest: /usr/local/bin/ha-backup.sh
         owner: root
@@ -106,6 +115,7 @@
       ansible.builtin.systemd:
         name: keepalived
         state: restarted
+
 
 
 
