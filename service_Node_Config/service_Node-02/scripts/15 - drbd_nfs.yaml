@@ -1,0 +1,172 @@
+---
+- name: DRBD + NFS setup on svc-1 (Primary)
+  hosts: localhost
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    # ==================================================
+    # Disk verification
+    # ==================================================
+    - name: Check nvme0n2 exists
+      command: lsblk -dn -o NAME
+      register: lsblk_out
+      changed_when: false
+
+    - name: Fail if nvme0n2 missing
+      fail:
+        msg: "Required disk nvme0n2 not found. Aborting."
+      when: "'nvme0n2' not in lsblk_out.stdout_lines"
+
+    - name: Dry-run wipefs (SAFE)
+      command: wipefs -n /dev/nvme0n2
+      changed_when: false
+
+    # ==================================================
+    # APT + Packages
+    # ==================================================
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Preseed Postfix (Local only)
+      debconf:
+        name: postfix
+        question: "{{ item.q }}"
+        value: "{{ item.v }}"
+        vtype: "{{ item.t }}"
+      loop:
+        - { q: "postfix/main_mailer_type", v: "Local only", t: "select" }
+        - { q: "postfix/mailname", v: "svc-1.kube.lan", t: "string" }
+
+    - name: Install DRBD + NFS packages
+      apt:
+        name:
+          - drbd-utils
+          - nfs-kernel-server
+          - nfs-common
+          - rpcbind
+        state: present
+
+    # ==================================================
+    # DRBD Verification
+    # ==================================================
+    - name: Check DRBD version
+      command: drbdadm --version
+      changed_when: false
+
+    # ==================================================
+    # Kernel module handling (FIXED SECTION)
+    # ==================================================
+    - name: Load DRBD kernel module
+      modprobe:
+        name: drbd
+        state: present
+
+    - name: Verify DRBD module loaded via /sys
+      stat:
+        path: /sys/module/drbd
+      register: drbd_module_check
+      changed_when: false
+
+    - name: Fail if DRBD module not loaded
+      fail:
+        msg: "DRBD kernel module is NOT loaded"
+      when: not drbd_module_check.stat.exists
+
+    - name: Ensure DRBD loads at boot
+      copy:
+        dest: /etc/modules-load.d/drbd.conf
+        content: "drbd\n"
+        owner: root
+        group: root
+        mode: '0644'
+
+    # ==================================================
+    # DRBD service
+    # ==================================================
+    - name: Enable DRBD service
+      systemd:
+        name: drbd
+        enabled: true
+
+    # ==================================================
+    # DRBD resource config
+    # ==================================================
+    - name: Copy kube.res
+      copy:
+        src: /root/kube.res
+        dest: /etc/drbd.d/kube.res
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Validate DRBD config
+      command: drbdadm dump kube
+      changed_when: false
+
+    # ==================================================
+    # DRBD metadata
+    # ==================================================
+    - name: Check DRBD status
+      command: drbdadm status kube
+      register: drbd_status
+      failed_when: false
+      changed_when: false
+
+    - name: Create DRBD metadata (first time only)
+      command: drbdadm create-md kube
+      when: "'diskless' in drbd_status.stdout or drbd_status.rc != 0"
+
+    # ==================================================
+    # Bring DRBD up
+    # ==================================================
+    - name: Bring DRBD resource up
+      command: drbdadm up kube
+      changed_when: false
+
+    - name: DRBD status after up
+      command: drbdadm status
+      changed_when: false
+
+    # ==================================================
+    # Wait for DRBD synchronization to complete (NEW SECTION)
+    # ==================================================
+    - name: Check initial DRBD sync state
+      shell: |
+        dstate=$(drbdadm dstate kube)
+        cstate=$(drbdadm cstate kube)
+        echo "dstate=$dstate"
+        echo "cstate=$cstate"
+      register: initial_sync_state
+      changed_when: false
+
+    - name: Wait for DRBD resynchronization to complete
+      shell: |
+        # Check disk and connection states
+        dstate=$(drbdadm dstate kube)
+        cstate=$(drbdadm cstate kube)
+        
+        # Exit 0 only when fully synchronized
+        if [ "$dstate" = "UpToDate/UpToDate" ] && [ "$cstate" = "Connected" ]; then
+          echo "DRBD synchronized"
+          exit 0
+        fi
+        
+        # Show current state for debugging
+        echo "Waiting for sync: dstate=$dstate cstate=$cstate"
+        exit 1
+      register: sync_result
+      until: sync_result.rc == 0
+      retries: 300  # 300 retries * 10 seconds = 50 minutes max wait
+      delay: 10     # Check every 10 seconds
+      changed_when: false
+      when: >
+        '"UpToDate/UpToDate" not in initial_sync_state.stdout or
+        "Connected" not in initial_sync_state.stdout'
+
+    - name: Final DRBD status
+      command: drbdadm status
+      changed_when: false
