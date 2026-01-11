@@ -24,7 +24,9 @@ SCRIPTS = [
     "12 - bind9.yaml",
     "13 - ntp.yaml",
     "14 - haproxy.yaml",
-    "15 - nfs.yaml",
+    "15 - drbd.yaml",
+    "15.1 - drbd-disk-moniter.py",
+    "15.2 - drbd-exports.yaml",
     "16 - reboot.yaml",
 ]
 
