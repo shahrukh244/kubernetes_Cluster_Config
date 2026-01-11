@@ -7,6 +7,6 @@ echo "===== BACKUP $(date) ====="
 systemctl stop nfs-server
 /usr/sbin/exportfs -au
 
-mountpoint -q /share/kube && umount /share/kube
+mountpoint -q /share/drbd_nfs && umount /share/drbd_nfs
 
 drbdadm secondary kube
