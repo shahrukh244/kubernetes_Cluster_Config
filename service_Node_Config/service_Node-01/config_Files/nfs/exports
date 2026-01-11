@@ -1,7 +1,7 @@
 # Kubernetes StorageClass - DELETE
-/shares/kubernetes/StorageClass/Delete \
+/share/drbd_nfs/kubernetes/StorageClass/Delete \
 10.0.0.0/24(rw,sync,all_squash,anonuid=1000,anongid=1000,no_subtree_check)
 
 # Kubernetes StorageClass - RETAIN
-/shares/kubernetes/StorageClass/Retain \
+/share/drbd_nfs/kubernetes/StorageClass/Retain \
 10.0.0.0/24(rw,sync,all_squash,anonuid=1000,anongid=1000,no_subtree_check)
