@@ -97,7 +97,7 @@
     # ==================================================
     - name: Copy kube.res
       copy:
-        src: /root/kube.res
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/drbd-nfs/kube.res
         dest: /etc/drbd.d/kube.res
         owner: root
         group: root
@@ -136,44 +136,4 @@
     # ==================================================
     - name: Promote DRBD to Primary (forced – first node only)
       command: drbdadm primary --force kube
-      changed_when: false
-
-    # ==================================================
-    # Wait for DRBD synchronization to complete (NEW SECTION)
-    # ==================================================
-    - name: Check initial DRBD sync state
-      shell: |
-        dstate=$(drbdadm dstate kube)
-        cstate=$(drbdadm cstate kube)
-        echo "dstate=$dstate"
-        echo "cstate=$cstate"
-      register: initial_sync_state
-      changed_when: false
-
-    - name: Wait for DRBD resynchronization to complete
-      shell: |
-        # Check disk and connection states
-        dstate=$(drbdadm dstate kube)
-        cstate=$(drbdadm cstate kube)
-        
-        # Exit 0 only when fully synchronized
-        if [ "$dstate" = "UpToDate/UpToDate" ] && [ "$cstate" = "Connected" ]; then
-          echo "DRBD synchronized"
-          exit 0
-        fi
-        
-        # Show current state for debugging
-        echo "Waiting for sync: dstate=$dstate cstate=$cstate"
-        exit 1
-      register: sync_result
-      until: sync_result.rc == 0
-      retries: 300  # 300 retries * 10 seconds = 50 minutes max wait
-      delay: 10     # Check every 10 seconds
-      changed_when: false
-      when: >
-        '"UpToDate/UpToDate" not in initial_sync_state.stdout or
-        "Connected" not in initial_sync_state.stdout'
-
-    - name: Final DRBD status
-      command: drbdadm status
       changed_when: false
