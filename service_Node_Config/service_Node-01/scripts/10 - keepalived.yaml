@@ -43,7 +43,7 @@
 
     - name: Deploy keepalived health check scripts
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_bind9/check_bind.sh
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_bind9/chk_bind.sh
         dest: /usr/local/bin/check_bind.sh
         owner: root
         group: root
@@ -52,7 +52,7 @@
 
     - name: Deploy keepalived health check scripts (chrony)
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_chrony/check_chrony.sh
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_chrony/chk_chrony.sh
         dest: /usr/local/bin/check_chrony.sh
         owner: root
         group: root
@@ -61,7 +61,7 @@
 
     - name: Deploy keepalived health check scripts (dhcp)
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_dhcp/check_dhcp.sh
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_dhcp/chk_dhcp.sh
         dest: /usr/local/bin/check_dhcp.sh
         owner: root
         group: root
@@ -70,7 +70,7 @@
 
     - name: Deploy keepalived health check scripts (haproxy)
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_haproxy/check_haproxy.sh
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_haproxy/chk_haproxy.sh
         dest: /usr/local/bin/check_haproxy.sh
         owner: root
         group: root
@@ -79,7 +79,7 @@
 
     - name: Deploy keepalived health check scripts (DRBD + NFS)
       ansible.builtin.copy:
-        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_drbd-nfs/check_drbd.sh
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/keepalived/check_drbd-nfs/chk_drbd.sh
         dest: /usr/local/bin/check_drbd.sh
         owner: root
         group: root
@@ -115,7 +115,3 @@
       ansible.builtin.systemd:
         name: keepalived
         state: restarted
-
-
-
-
