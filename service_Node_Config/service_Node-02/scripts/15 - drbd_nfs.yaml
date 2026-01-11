@@ -1,5 +1,5 @@
 ---
-- name: DRBD + NFS setup on svc-1 (Primary)
+- name: DRBD + NFS setup on svc-2
   hosts: localhost
   become: true
   gather_facts: true
@@ -39,7 +39,7 @@
         vtype: "{{ item.t }}"
       loop:
         - { q: "postfix/main_mailer_type", v: "Local only", t: "select" }
-        - { q: "postfix/mailname", v: "svc-1.kube.lan", t: "string" }
+        - { q: "postfix/mailname", v: "svc-2.kube.lan", t: "string" }  # ✅ CHANGED
 
     - name: Install DRBD + NFS packages
       apt:
@@ -98,7 +98,7 @@
     - name: Copy kube.res
       copy:
         src: /root/kube.res
-        dest: /etc/drbd.d/kube.res
+        dest: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/drbd-nfs/kube.res
         owner: root
         group: root
         mode: '0644'
@@ -132,7 +132,7 @@
       changed_when: false
 
     # ==================================================
-    # Wait for DRBD synchronization to complete (NEW SECTION)
+    # Wait for DRBD synchronization to complete (INDEFINITELY)
     # ==================================================
     - name: Check initial DRBD sync state
       shell: |
@@ -143,30 +143,48 @@
       register: initial_sync_state
       changed_when: false
 
-    - name: Wait for DRBD resynchronization to complete
+    - name: Wait until DRBD on svc-2 reaches final synchronized state
       shell: |
-        # Check disk and connection states
-        dstate=$(drbdadm dstate kube)
-        cstate=$(drbdadm cstate kube)
-        
-        # Exit 0 only when fully synchronized
-        if [ "$dstate" = "UpToDate/UpToDate" ] && [ "$cstate" = "Connected" ]; then
-          echo "DRBD synchronized"
-          exit 0
-        fi
-        
-        # Show current state for debugging
-        echo "Waiting for sync: dstate=$dstate cstate=$cstate"
-        exit 1
-      register: sync_result
-      until: sync_result.rc == 0
-      retries: 300  # 300 retries * 10 seconds = 50 minutes max wait
-      delay: 10     # Check every 10 seconds
-      changed_when: false
-      when: >
-        '"UpToDate/UpToDate" not in initial_sync_state.stdout or
-        "Connected" not in initial_sync_state.stdout'
+        # Get clean status line from /proc/drbd
+        status_line=$(grep '^ 0:' /proc/drbd 2>/dev/null | head -1)
 
-    - name: Final DRBD status
-      command: drbdadm status
+        if [ -z "$status_line" ]; then
+          echo "ERROR: DRBD status not found"
+          exit 1
+        fi
+
+        # POSIX-compliant checks (works in /bin/sh)
+        case "$status_line" in
+          *cs:Connected*ro:Secondary/Primary*ds:UpToDate/UpToDate*)
+            echo "✅ DRBD fully synced on svc-2"
+            exit 0
+            ;;
+          *)
+            echo "⏳ Waiting: $status_line"
+            exit 1
+            ;;
+        esac
+      register: drbd_sync_check
+      until: drbd_sync_check.rc == 0
+      retries: 1000000
+      delay: 10
       changed_when: false
+
+    # ==================================================
+    # Post-sync tasks (as requested – NO LOGIC CHANGED)
+    # ==================================================
+    - name: Create DRBD NFS mount directory
+      file:
+        path: /share/drbd_nfs
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Deploy NFS exports configuration
+      copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/nfs/exports
+        dest: /etc/exports
+        owner: root
+        group: root
+        mode: '0644'
