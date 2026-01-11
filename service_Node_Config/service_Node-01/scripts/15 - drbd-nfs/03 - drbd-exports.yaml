@@ -12,27 +12,56 @@
       command: drbdadm status kube
       register: drbd_status
       changed_when: false
+      failed_when: false
 
-    - name: Fail if DRBD not connected or not Primary
+    - name: Fail if DRBD status command failed
       fail:
-        msg: "DRBD must be Connected and Primary. Current status: {{ drbd_status.stdout }}"
+        msg: "DRBD status check failed: {{ drbd_status.stderr | default(drbd_status.stdout) }}"
+      when: drbd_status.rc != 0
+
+    - name: Fail if DRBD not Primary or replication not Established
+      fail:
+        msg: |
+          DRBD must be Primary with Established replication.
+          Current status:
+          {{ drbd_status.stdout | indent(10) }}
       when: >
-        'cs:Connected' not in drbd_status.stdout or
-        'ro:Primary/' not in drbd_status.stdout
+        ('role:Primary' not in drbd_status.stdout) or
+        ('replication:Established' not in drbd_status.stdout)
 
     # ==================================================
-    # Filesystem & Mount
+    # Device existence check (critical fix)
     # ==================================================
-    - name: Check if /dev/drbd0 has XFS filesystem
+    - name: Verify DRBD device exists
+      stat:
+        path: /dev/drbd0
+      register: drbd_device
+      failed_when: false
+
+    - name: Fail if DRBD device missing
+      fail:
+        msg: "/dev/drbd0 does not exist. Is DRBD resource 'kube' properly configured and attached?"
+      when: not drbd_device.stat.exists
+
+    # ==================================================
+    # Filesystem & Mount (fixed condition)
+    # ==================================================
+    - name: Check filesystem type on /dev/drbd0
       command: file -sL /dev/drbd0
       register: fs_check
       changed_when: false
+      failed_when: false
+      args:
+        warn: false
+      when: drbd_device.stat.exists
 
     - name: Create XFS filesystem on /dev/drbd0 (only if unformatted)
       filesystem:
         fstype: xfs
         dev: /dev/drbd0
-      when: "'XFS filesystem' not in fs_check.stdout"
+      when: 
+        - drbd_device.stat.exists
+        - "'XFS filesystem' not in (fs_check.stdout | default(''))"
 
     - name: Ensure mount point exists
       file:
