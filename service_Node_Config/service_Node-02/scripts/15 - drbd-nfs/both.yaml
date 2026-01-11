@@ -143,27 +143,31 @@
       register: initial_sync_state
       changed_when: false
 
-    - name: Wait indefinitely for DRBD resynchronization to complete
+    - name: Wait until DRBD on svc-2 reaches final synchronized state
       shell: |
-        dstate=$(drbdadm dstate kube)
-        cstate=$(drbdadm cstate kube)
-        if [ "$dstate" = "UpToDate/UpToDate" ] && [ "$cstate" = "Connected" ]; then
-          echo "DRBD synchronized"
-          exit 0
+        # Get clean status line from /proc/drbd
+        status_line=$(grep '^ 0:' /proc/drbd 2>/dev/null | head -1)
+        
+        if [ -z "$status_line" ]; then
+          echo "ERROR: DRBD status not found"
+          exit 1
         fi
-        echo "Waiting for sync: dstate=$dstate cstate=$cstate"
-        exit 1
-      register: sync_result
-      until: sync_result.rc == 0
+        
+        # POSIX-compliant checks (works in /bin/sh)
+        case "$status_line" in
+          *cs:Connected*ro:Secondary/Primary*ds:UpToDate/UpToDate*)
+            echo "✅ DRBD fully synced on svc-2"
+            exit 0
+            ;;
+          *)
+            echo "⏳ Waiting: $status_line"
+            exit 1
+            ;;
+        esac
+      register: drbd_sync_check
+      until: drbd_sync_check.rc == 0
+      retries: 1000000
       delay: 10
-      changed_when: false
-      # ✅ NO 'retries' → waits forever
-      when: >
-        '"UpToDate/UpToDate" not in initial_sync_state.stdout or
-        "Connected" not in initial_sync_state.stdout'
-
-    - name: Final DRBD status
-      command: drbdadm status
       changed_when: false
 
     # ==================================================
