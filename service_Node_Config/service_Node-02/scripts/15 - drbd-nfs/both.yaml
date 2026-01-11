@@ -183,7 +183,7 @@
 
     - name: Deploy NFS exports configuration
       copy:
-        src: /root/exports
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/nfs/exports
         dest: /etc/exports
         owner: root
         group: root
