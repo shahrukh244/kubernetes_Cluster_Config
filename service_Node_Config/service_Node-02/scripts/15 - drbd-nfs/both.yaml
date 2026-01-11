@@ -147,12 +147,12 @@
       shell: |
         # Get clean status line from /proc/drbd
         status_line=$(grep '^ 0:' /proc/drbd 2>/dev/null | head -1)
-        
+
         if [ -z "$status_line" ]; then
           echo "ERROR: DRBD status not found"
           exit 1
         fi
-        
+
         # POSIX-compliant checks (works in /bin/sh)
         case "$status_line" in
           *cs:Connected*ro:Secondary/Primary*ds:UpToDate/UpToDate*)
