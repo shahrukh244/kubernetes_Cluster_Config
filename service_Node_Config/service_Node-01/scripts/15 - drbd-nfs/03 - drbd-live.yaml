@@ -1,0 +1,88 @@
+---
+- name: Configure DRBD-backed NFS server on svc-1 (Primary)
+  hosts: localhost
+  become: true
+  gather_facts: true
+
+  tasks:
+    # ==================================================
+    # Verify DRBD device is ready and Primary
+    # ==================================================
+    - name: Check DRBD resource 'kube' status
+      command: drbdadm status kube
+      register: drbd_status
+      changed_when: false
+
+    - name: Fail if DRBD not connected or not Primary
+      fail:
+        msg: "DRBD must be Connected and Primary. Current status: {{ drbd_status.stdout }}"
+      when: >
+        'cs:Connected' not in drbd_status.stdout or
+        'ro:Primary/' not in drbd_status.stdout
+
+    # ==================================================
+    # Filesystem & Mount
+    # ==================================================
+    - name: Check if /dev/drbd0 has XFS filesystem
+      command: file -sL /dev/drbd0
+      register: fs_check
+      changed_when: false
+
+    - name: Create XFS filesystem on /dev/drbd0 (only if unformatted)
+      filesystem:
+        fstype: xfs
+        dev: /dev/drbd0
+      when: "'XFS filesystem' not in fs_check.stdout"
+
+    - name: Ensure mount point exists
+      file:
+        path: /share/drbd_nfs
+        state: directory
+        mode: '0755'
+
+    - name: Mount /dev/drbd0 to /share/drbd_nfs
+      mount:
+        path: /share/drbd_nfs
+        src: /dev/drbd0
+        fstype: xfs
+        opts: defaults
+        state: mounted
+
+    # ==================================================
+    # Kubernetes directory structure
+    # ==================================================
+    - name: Create Kubernetes StorageClass directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "1000"
+        group: "1000"
+        mode: '0777'
+      loop:
+        - /share/drbd_nfs/kubernetes/StorageClass/Delete
+        - /share/drbd_nfs/kubernetes/StorageClass/Retain
+
+    # ==================================================
+    # NFS Exports
+    # ==================================================
+    - name: Copy exports file
+      copy:
+        src: /root/exports
+        dest: /etc/exports
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Reload NFS exports
+      command: exportfs -rav
+      register: export_result
+      changed_when: "'exporting' in export_result.stdout"
+
+    # ==================================================
+    # NFS Service
+    # ==================================================
+    - name: Enable and start NFS server
+      systemd:
+        name: nfs-server
+        enabled: true
+        state: started
