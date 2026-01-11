@@ -97,8 +97,8 @@
     # ==================================================
     - name: Copy kube.res
       copy:
-        src: /root/kube.res
-        dest: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/drbd-nfs/kube.res
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/drbd-nfs/kube.res
+        dest: /etc/drbd.d/kube.res
         owner: root
         group: root
         mode: '0644'
