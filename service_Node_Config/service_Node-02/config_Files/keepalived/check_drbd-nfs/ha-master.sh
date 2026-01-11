@@ -7,7 +7,7 @@ echo "===== MASTER $(date) ====="
 drbdadm primary --force kube
 udevadm settle
 
-mountpoint -q /share/kube || mount /dev/drbd0 /share/kube
+mountpoint -q /share/drbd_nfs || mount /dev/drbd0 /share/drbd_nfs
 
 /usr/sbin/exportfs -rav
 systemctl start rpcbind
