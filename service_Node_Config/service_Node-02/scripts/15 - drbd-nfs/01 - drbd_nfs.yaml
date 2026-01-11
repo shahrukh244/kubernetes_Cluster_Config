@@ -1,5 +1,5 @@
 ---
-- name: DRBD + NFS setup on svc-1 (Primary)
+- name: DRBD + NFS setup on svc-2
   hosts: localhost
   become: true
   gather_facts: true
