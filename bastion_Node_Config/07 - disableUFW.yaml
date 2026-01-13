@@ -11,6 +11,7 @@
       ansible.builtin.stat:
         path: /lib/systemd/system/ufw.service
       register: ufw_service
+      changed_when: false
 
     - name: Stop and disable UFW if present
       ansible.builtin.service:
@@ -18,4 +19,16 @@
         state: stopped
         enabled: false
       when: ufw_service.stat.exists
+      register: ufw_disable_result
 
+    # -------- Feedback Messages --------
+    - name: Report UFW status
+      ansible.builtin.debug:
+        msg: |
+          {% if not ufw_service.stat.exists %}
+          [OK] UFW is not installed — nothing to do.
+          {% elif ufw_disable_result.changed %}
+          [OK] UFW has been stopped and disabled.
+          {% else %}
+          [OK] UFW is already stopped and disabled.
+          {% endif %}
