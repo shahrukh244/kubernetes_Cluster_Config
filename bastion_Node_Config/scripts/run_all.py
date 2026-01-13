@@ -23,6 +23,7 @@ SCRIPTS = [
     "11 - install_kubectl.yaml",
     "12 - all_Node_Passwd-Less.yaml",
     "13 - fetch_kubeconfig.yaml",
+    "14 - reboot.yaml",
 ]
 
 def run_script(script_name):
