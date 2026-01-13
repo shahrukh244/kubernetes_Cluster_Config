@@ -28,9 +28,9 @@ $TTL 604800
 ; =============================
 ; Control Plane Nodes
 ; =============================
-211     IN  PTR kube-cp-1.kube.lan.
-212     IN  PTR kube-cp-2.kube.lan.
-213     IN  PTR kube-cp-3.kube.lan.
+111     IN  PTR kube-cp-1.kube.lan.
+112     IN  PTR kube-cp-2.kube.lan.
+113     IN  PTR kube-cp-3.kube.lan.
 
 ; =============================
 ; Worker Nodes
