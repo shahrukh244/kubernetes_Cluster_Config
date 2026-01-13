@@ -29,9 +29,9 @@ bastion.kube.lan.       IN  A       10.0.0.100
 ; =============================
 ; Control Plane Nodes
 ; =============================
-kube-cp-1.kube.lan.     IN  A       10.0.0.211
-kube-cp-2.kube.lan.     IN  A       10.0.0.212
-kube-cp-3.kube.lan.     IN  A       10.0.0.213
+kube-cp-1.kube.lan.     IN  A       10.0.0.111
+kube-cp-2.kube.lan.     IN  A       10.0.0.112
+kube-cp-3.kube.lan.     IN  A       10.0.0.113
 
 ; =============================
 ; Worker Nodes
