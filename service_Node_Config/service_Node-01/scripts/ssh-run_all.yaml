@@ -13,8 +13,8 @@
       ansible.builtin.pause:
         seconds: 5
 
-    - name: Include 00 - 00 - cloneRepo.yaml
-      ansible.builtin.include_playbook: "{{ base_dir }}/00 - cloneRepo.yaml"
+    - name: Include cloneRepo.yaml
+      ansible.builtin.include_playbook: "{{ base_dir }}/cloneRepo.yaml"
 
     - name: Wait 5 seconds before next step
       ansible.builtin.pause:
