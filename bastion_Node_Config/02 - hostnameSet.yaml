@@ -7,12 +7,12 @@
   tasks:
 
     # -------- Set hostname --------
-    - name: Set system hostname to svc-1.kube.lan
+    - name: Set system hostname to bastion.kube.lan
       ansible.builtin.hostname:
-        name: svc-1.kube.lan
+        name: bastion.kube.lan
 
     - name: Show hostname change
       ansible.builtin.debug:
-        msg: "[+] Hostname set to svc-1.kube.lan"
+        msg: "[+] Hostname set to bastion.kube.lan"
 
 
