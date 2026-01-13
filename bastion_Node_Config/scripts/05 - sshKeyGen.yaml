@@ -1,0 +1,74 @@
+---
+- name: Full Ubuntu system setup with services
+  hosts: localhost
+  become: true
+  gather_facts: true
+
+  tasks:
+    # -------- SSH KEYGEN (smart & idempotent) --------
+
+    - name: Check if root SSH private key exists
+      ansible.builtin.stat:
+        path: /root/.ssh/id_ed25519
+      register: root_ssh_key
+      changed_when: false
+
+    - name: Ensure /root/.ssh directory exists
+      ansible.builtin.file:
+        path: /root/.ssh
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+      register: ssh_dir_result
+
+    - name: Generate ed25519 SSH key for root (no passphrase)
+      ansible.builtin.command: ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N ""
+      when: not root_ssh_key.stat.exists
+      register: keygen_result
+
+    - name: Ensure private key permissions are correct
+      ansible.builtin.file:
+        path: /root/.ssh/id_ed25519
+        owner: root
+        group: root
+        mode: "0600"
+      when: root_ssh_key.stat.exists
+      register: priv_perm_result
+
+    - name: Ensure public key permissions are correct
+      ansible.builtin.file:
+        path: /root/.ssh/id_ed25519.pub
+        owner: root
+        group: root
+        mode: "0644"
+      when: root_ssh_key.stat.exists
+      register: pub_perm_result
+
+    # -------- Feedback Messages --------
+    - name: Report SSH key status
+      ansible.builtin.debug:
+        msg: |
+          {% if keygen_result is changed %}
+          [OK] New ed25519 SSH key generated for root.
+          {% elif root_ssh_key.stat.exists %}
+          [OK] SSH key already exists — no action needed.
+          {% else %}
+          [OK] SSH key was missing but has been created.
+          {% endif %}
+      when: keygen_result is changed or root_ssh_key.stat.exists
+
+    - name: Report .ssh directory setup
+      ansible.builtin.debug:
+        msg: "[OK] /root/.ssh directory ensured with correct permissions."
+      when: ssh_dir_result is changed
+
+    - name: Report private key permissions
+      ansible.builtin.debug:
+        msg: "[OK] Private key permissions corrected to 0600."
+      when: priv_perm_result is changed
+
+    - name: Report public key permissions
+      ansible.builtin.debug:
+        msg: "[OK] Public key permissions corrected to 0644."
+      when: pub_perm_result is changed

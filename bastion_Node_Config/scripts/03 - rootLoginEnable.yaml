@@ -1,0 +1,87 @@
+---
+- name: Full Ubuntu system setup with services
+  hosts: localhost
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    # -------- SSH (smart & idempotent) --------
+
+    - name: Read sshd_config
+      ansible.builtin.slurp:
+        path: /etc/ssh/sshd_config
+      register: sshd_config_raw
+      changed_when: false
+
+    - name: Decode sshd_config
+      ansible.builtin.set_fact:
+        sshd_config: "{{ sshd_config_raw.content | b64decode }}"
+      changed_when: false
+
+    # ---- PermitRootLogin ----
+    - name: Ensure PermitRootLogin yes
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^[#\s]*PermitRootLogin\s+'
+        line: 'PermitRootLogin yes'
+      when: "'PermitRootLogin yes' not in sshd_config"
+      notify: Restart SSH
+      register: permit_root_result
+
+    - name: Report PermitRootLogin status
+      ansible.builtin.debug:
+        msg: |
+          {% if permit_root_result is skipped %}
+          [OK] PermitRootLogin is already set to 'yes'.
+          {% else %}
+          [OK] PermitRootLogin has been set to 'yes'.
+          {% endif %}
+      when: permit_root_result is skipped or permit_root_result is changed
+
+    # ---- PasswordAuthentication ----
+    - name: Ensure PasswordAuthentication yes
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^[#\s]*PasswordAuthentication\s+'
+        line: 'PasswordAuthentication yes'
+      when: "'PasswordAuthentication yes' not in sshd_config"
+      notify: Restart SSH
+      register: password_auth_result
+
+    - name: Report PasswordAuthentication status
+      ansible.builtin.debug:
+        msg: |
+          {% if password_auth_result is skipped %}
+          [OK] PasswordAuthentication is already set to 'yes'.
+          {% else %}
+          [OK] PasswordAuthentication has been set to 'yes'.
+          {% endif %}
+      when: password_auth_result is skipped or password_auth_result is changed
+
+    # ---- UsePAM ----
+    - name: Ensure UsePAM yes
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^[#\s]*UsePAM\s+'
+        line: 'UsePAM yes'
+      when: "'UsePAM yes' not in sshd_config"
+      notify: Restart SSH
+      register: use_pam_result
+
+    - name: Report UsePAM status
+      ansible.builtin.debug:
+        msg: |
+          {% if use_pam_result is skipped %}
+          [OK] UsePAM is already set to 'yes'.
+          {% else %}
+          [OK] UsePAM has been set to 'yes'.
+          {% endif %}
+      when: use_pam_result is skipped or use_pam_result is changed
+
+  handlers:
+
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: ssh
+        state: restarted

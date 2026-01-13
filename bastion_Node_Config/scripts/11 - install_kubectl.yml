@@ -1,0 +1,72 @@
+---
+- name: Install kubectl (stable version)
+  hosts: localhost
+  become: true
+  vars:
+    kubectl_dest: /usr/local/bin/kubectl
+    kubectl_stable_url: "https://dl.k8s.io/release/stable.txt"
+
+  tasks:
+    - name: Check if kubectl is already installed
+      stat:
+        path: "{{ kubectl_dest }}"
+      register: kubectl_stat
+
+    - name: Get latest stable kubectl version from upstream
+      uri:
+        url: "{{ kubectl_stable_url }}"
+        return_content: yes
+        timeout: 10
+      register: stable_version_response
+      when: not kubectl_stat.stat.exists
+      failed_when: stable_version_response.status != 200 or stable_version_response.content | trim == ""
+
+    - name: Set fact for kubectl version
+      set_fact:
+        kubectl_version: "{{ stable_version_response.content | trim }}"
+      when: not kubectl_stat.stat.exists
+
+    - name: Fail if unable to determine stable version
+      assert:
+        that: kubectl_version is defined and kubectl_version | length > 0
+        fail_msg: "Failed to fetch stable kubectl version from {{ kubectl_stable_url }}"
+      when: not kubectl_stat.stat.exists
+
+    - name: Download kubectl binary
+      get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+        dest: "/tmp/kubectl_{{ kubectl_version }}"
+        mode: '0755'
+      when: not kubectl_stat.stat.exists
+
+    - name: Install kubectl to system path
+      copy:
+        src: "/tmp/kubectl_{{ kubectl_version }}"
+        dest: "{{ kubectl_dest }}"
+        remote_src: yes
+        mode: '0755'
+      when: not kubectl_stat.stat.exists
+
+    - name: Clean up temporary kubectl binary
+      file:
+        path: "/tmp/kubectl_{{ kubectl_version }}"
+        state: absent
+      when: not kubectl_stat.stat.exists
+
+    - name: Verify kubectl client version (best-effort)
+      command: "{{ kubectl_dest }} version --client --short"
+      register: kubectl_version_check
+      changed_when: false
+      failed_when: false
+      check_mode: no
+
+    - name: Report installation status
+      debug:
+        msg: >
+          kubectl is installed at {{ kubectl_dest }}.
+          {% if kubectl_stat.stat.exists %}
+          [SKIPPED] Already present.
+          {% else %}
+          [INSTALLED] Version {{ kubectl_version }}.
+          {% endif %}
+          Client version: {{ kubectl_version_check.stdout | default('unknown') }}
