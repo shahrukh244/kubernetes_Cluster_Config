@@ -6,7 +6,7 @@
 
   tasks:
 
-      - name: Include 00 - sshEnableLogin.yaml
+    - name: Include 00 - sshEnableLogin.yaml
       ansible.builtin.include_playbook: "{{ base_dir }}/00 - sshEnableLogin.yaml"
 
     - name: Wait 5 seconds before next step
