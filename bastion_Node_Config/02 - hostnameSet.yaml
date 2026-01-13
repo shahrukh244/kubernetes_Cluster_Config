@@ -1,18 +1,30 @@
 ---
-- name: Hostname Setup
+- name: Ensure bastion hostname is set correctly
   hosts: localhost
-  become: true
+  become: yes
   gather_facts: true
+  vars:
+    expected_hostname: "bastion.kube.lan"
 
   tasks:
+    - name: Check current static hostname
+      command: hostnamectl --static
+      changed_when: false
+      check_mode: no
+      register: current_hostname_result
 
-    # -------- Set hostname --------
-    - name: Set system hostname to bastion.kube.lan
-      ansible.builtin.hostname:
-        name: bastion.kube.lan
+    - name: Set hostname to {{ expected_hostname }}
+      hostname:
+        name: "{{ expected_hostname }}"
+      register: hostname_change
+      when: current_hostname_result.stdout.strip() != expected_hostname
 
-    - name: Show hostname change
+    - name: Confirm hostname update
       ansible.builtin.debug:
-        msg: "[+] Hostname set to bastion.kube.lan"
+        msg: "[OK] Hostname successfully set to {{ expected_hostname }}"
+      when: hostname_change is changed
 
-
+    - name: Confirm hostname already correct
+      ansible.builtin.debug:
+        msg: "[OK] Hostname is already {{ expected_hostname }} — no change needed"
+      when: current_hostname_result.stdout.strip() == expected_hostname
