@@ -9,21 +9,21 @@ LOG_FILE = Path.home() / "svc-2_setup.log"
 BASE_DIR = Path.home() / "kubernetes_Cluster_Config/service_Node_Config/service_Node-02/scripts/"
 
 SCRIPTS = [
-    "01 - InstallAnsible.py",
-    "02 - hostnameSet.yaml",
-    "03 - setIP.yaml",
-    "04 - NAT.yaml",
-    "05 - rootLoginEnable.yaml",
-    "06 - rootPasswdChange.yaml",
-    "07 - sshKeyGen.yaml",
-    "08 - disableSwap.yaml",
-    "09 - disableUFW.yaml",
-    "10 - keepalived.yaml",
-    "11 - dhcp.yaml",
-    "12 - bind9.yaml",
-    "13 - ntp.yaml",
-    "14 - haproxy.yaml",
-    "15 - reboot.yaml",
+    "01-InstallAnsible.py",
+    "02-hostnameSet.yaml",
+    "03-setIP.yaml",
+    "04-NAT.yaml",
+    "05-rootLoginEnable.yaml",
+    "06-rootPasswdChange.yaml",
+    "07-sshKeyGen.yaml",
+    "08-disableSwap.yaml",
+    "09-disableUFW.yaml",
+    "10-keepalived.yaml",
+    "11-dhcp.yaml",
+    "12-bind9.yaml",
+    "13-ntp.yaml",
+    "14-haproxy.yaml",
+    "15-reboot.yaml",
 ]
 
 def log_message(msg):
