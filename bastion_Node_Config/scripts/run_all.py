@@ -5,29 +5,24 @@ import sys
 import time
 from pathlib import Path
 
-# Directory where this script is located
-BASE_DIR = Path(__file__).resolve().parent
+# Directory where scripts are located (updated)
+BASE_DIR = Path("/root/kubernetes_Cluster_Config-main/bastion_Node_Config/scripts/")
 
-# Ordered list of scripts to execute
+# Ordered list of scripts to execute (updated names)
 SCRIPTS = [
     "01 - InstallAnsible.py",
     "02 - hostnameSet.yaml",
-    "03 - setIP.yaml",
-    "04 - NAT.yaml",
-    "05 - rootLoginEnable.yaml",
-    "06 - rootPasswdChange.yaml",
-    "07 - sshKeyGen.yaml",
-    "08 - disableSwap.yaml",
-    "09 - disableUFW.yaml",
-    "10 - keepalived.yaml",
-    "11 - dhcp.yaml",
-    "12 - bind9.yaml",
-    "13 - ntp.yaml",
-    "14 - haproxy.yaml",
-    "15 - drbd.yaml",
-    "15.1 - drbd-disk-moniter.py",
-    "15.2 - drbd-exports.yaml",
-    "16 - reboot.yaml",
+    "03 - rootLoginEnable.yaml",
+    "04 - rootPasswdChange.yaml",
+    "05 - sshKeyGen.yaml",
+    "06 - disableSwap.yaml",
+    "07 - disableUFW.yaml",
+    "08 - enable_ip_forwarding.yaml",
+    "09 - configure_chrony.yaml",
+    "10 - install_oc_cli.yaml",
+    "11 - install_kubectl.yaml",
+    "12 - all_Node_Passwd-Less.yaml",
+    "13 - fetch_kubeconfig.yaml",
 ]
 
 def run_script(script_name):
