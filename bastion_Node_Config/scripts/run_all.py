@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 # Directory where scripts are located (updated)
-BASE_DIR = Path("/root/kubernetes_Cluster_Config-main/bastion_Node_Config/scripts/")
+BASE_DIR = Path("/root/kubernetes_Cluster_Config/bastion_Node_Config/scripts/")
 
 # Ordered list of scripts to execute (updated names)
 SCRIPTS = [
