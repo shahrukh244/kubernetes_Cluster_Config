@@ -23,8 +23,7 @@ SCRIPTS = [
     "12 - bind9.yaml",
     "13 - ntp.yaml",
     "14 - haproxy.yaml",
-    "15 - drbd_nfs.yaml",
-    "16 - reboot.yaml",
+    "15 - reboot.yaml",
 ]
 
 def log_message(msg):
