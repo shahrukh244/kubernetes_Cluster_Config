@@ -4,9 +4,12 @@
   become: true
   gather_facts: true
 
-  tasks:
+  vars:
+    root_password: "123"
+    # Valid salt: 16 chars max, only [a-zA-Z0-9./]
+    root_password_hash: "{{ root_password | password_hash('sha512', 'staticSalt12345') }}"
 
-    # -------- Root password (only if different) --------
+  tasks:
     - name: Check current root password hash
       ansible.builtin.command: getent shadow root
       register: root_shadow
@@ -15,15 +18,24 @@
     - name: Set root password if different
       ansible.builtin.user:
         name: root
-        password: "{{ '123' | password_hash('sha512') }}"
-      when: "'{{ '123' | password_hash('sha512') }}' not in root_shadow.stdout"
+        password: "{{ root_password_hash }}"
+      register: set_root_pass_result
+      when: root_password_hash not in root_shadow.stdout
       notify: Restart SSH
 
-  handlers:
+    - name: Report root password status
+      ansible.builtin.debug:
+        msg: |
+          {% if set_root_pass_result is skipped %}
+          [OK] Root password is already set to the desired value.
+          {% else %}
+          [OK] Root password has been updated successfully.
+          {% endif %}
+      when: set_root_pass_result is skipped or set_root_pass_result is changed
 
+  handlers:
     - name: Restart SSH
       ansible.builtin.service:
         name: ssh
         state: restarted
         enabled: true
-
