@@ -1,0 +1,17 @@
+---
+# Play 1: Ensure root SSH access is working (runs locally)
+- name: Prepare root SSH access to 10.0.0.11
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Test SSH connectivity as root (non-fatal)
+      ansible.builtin.command: ssh -o BatchMode=yes -o ConnectTimeout=10 root@10.0.0.11 'echo OK'
+      ignore_errors: yes
+      register: ssh_test
+      changed_when: false
+
+    - name: Run canLoginAsRoot.py if SSH failed
+      ansible.builtin.command: python3 /root/canLoginAsRoot.py
+      when: ssh_test.failed
+      changed_when: true
+
