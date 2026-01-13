@@ -10,7 +10,7 @@
       register: ssh_test
       changed_when: false
 
-    - name: Run canLoginAsRoot.py if SSH failed
-      ansible.builtin.command: python3 /root/canLoginAsRoot.py
-      when: ssh_test.failed
-      changed_when: true
+- name: Run canLoginAsRoot.py if SSH failed
+  ansible.builtin.command: python3 "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/canLoginAsRoot.py"
+  when: ssh_test.failed
+  changed_when: true
