@@ -27,6 +27,17 @@
         line: 'PermitRootLogin yes'
       when: "'PermitRootLogin yes' not in sshd_config"
       notify: Restart SSH
+      register: permit_root_result
+
+    - name: Report PermitRootLogin status
+      ansible.builtin.debug:
+        msg: |
+          {% if permit_root_result is skipped %}
+          [OK] PermitRootLogin is already set to 'yes'.
+          {% else %}
+          [OK] PermitRootLogin has been set to 'yes'.
+          {% endif %}
+      when: permit_root_result is skipped or permit_root_result is changed
 
     # ---- PasswordAuthentication ----
     - name: Ensure PasswordAuthentication yes
@@ -36,6 +47,17 @@
         line: 'PasswordAuthentication yes'
       when: "'PasswordAuthentication yes' not in sshd_config"
       notify: Restart SSH
+      register: password_auth_result
+
+    - name: Report PasswordAuthentication status
+      ansible.builtin.debug:
+        msg: |
+          {% if password_auth_result is skipped %}
+          [OK] PasswordAuthentication is already set to 'yes'.
+          {% else %}
+          [OK] PasswordAuthentication has been set to 'yes'.
+          {% endif %}
+      when: password_auth_result is skipped or password_auth_result is changed
 
     # ---- UsePAM ----
     - name: Ensure UsePAM yes
@@ -45,6 +67,17 @@
         line: 'UsePAM yes'
       when: "'UsePAM yes' not in sshd_config"
       notify: Restart SSH
+      register: use_pam_result
+
+    - name: Report UsePAM status
+      ansible.builtin.debug:
+        msg: |
+          {% if use_pam_result is skipped %}
+          [OK] UsePAM is already set to 'yes'.
+          {% else %}
+          [OK] UsePAM has been set to 'yes'.
+          {% endif %}
+      when: use_pam_result is skipped or use_pam_result is changed
 
   handlers:
 
@@ -52,4 +85,3 @@
       ansible.builtin.service:
         name: ssh
         state: restarted
-
