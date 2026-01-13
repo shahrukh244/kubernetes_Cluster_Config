@@ -3,7 +3,7 @@
   hosts: localhost
   become: true
   vars:
-    source_config: /root/kubernetes_Cluster_Config/bastion_Node_Config/config_Files/chrony/chrony.conf
+    source_config: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/bastion_Node_Config/config_Files/chrony/chrony.conf"
     dest_config: /etc/chrony/chrony.conf
 
   tasks:
