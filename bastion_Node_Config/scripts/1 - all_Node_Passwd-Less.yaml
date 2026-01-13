@@ -1,21 +1,23 @@
 ---
 - name: Generate SSH key on bastion and deploy to target nodes
   hosts: localhost
-  become: true
+  become: false
+  any_errors_fatal: false
   vars:
     ssh_key_path: "{{ ansible_env.HOME }}/.ssh/id_ed25519"
     target_hosts:
       - "10.0.0.11"
       - "10.0.0.12"
-      - "10.0.0.211"
-      - "10.0.0.212"
-      - "10.0.0.213"
+      - "10.0.0.111"
+      - "10.0.0.112"
+      - "10.0.0.113"
       - "10.0.0.221"
       - "10.0.0.222"
     root_password: "123"
 
   tasks:
     - name: Ensure sshpass is installed (required for password-based SSH)
+      become: true
       apt:
         name: sshpass
         state: present
@@ -26,7 +28,6 @@
         path: "{{ ansible_env.HOME }}/.ssh"
         state: directory
         mode: '0700'
-      become: false
 
     - name: Generate ed25519 SSH key pair (no passphrase)
       openssh_keypair:
@@ -34,19 +35,18 @@
         type: ed25519
         comment: "{{ ansible_user_id }}@{{ ansible_hostname }}"
         regenerate: never
-      become: false
       register: keygen
 
     - name: Read public key content
       slurp:
         src: "{{ ssh_key_path }}.pub"
-      become: false
       register: pub_key_slurp
 
     - name: Set public key as fact
       set_fact:
         pub_key_content: "{{ pub_key_slurp.content | b64decode | trim }}"
 
+    # 🔴 THIS TASK WAS MISSING — ADD IT BACK!
     - name: Deploy SSH key to each target host
       delegate_to: "{{ item }}"
       vars:
@@ -59,20 +59,15 @@
         state: present
         manage_dir: true
       register: deploy_result
-      failed_when: false  # Do NOT fail the play on unreachable host
+      ignore_unreachable: yes
       loop: "{{ target_hosts }}"
       loop_control:
         label: "{{ item }}"
 
+    # ✅ Now this works because deploy_result exists
     - name: Show deployment summary
       debug:
         msg: |
-          {% for host in target_hosts %}
-          [{{ host }}] {{
-            (hostvars[host].deploy_result is undefined) or
-            (hostvars[host].deploy_result.unreachable | default(false)) or
-            (hostvars[host].deploy_result.failed | default(false))
-            ? 'OFFLINE / UNREACHABLE'
-            : (hostvars[host].deploy_result.changed | default(false) ? 'SSH key INSTALLED' : 'SSH key ALREADY PRESENT')
-          }}
+          {% for result in deploy_result.results %}
+          [{{ result.item }}] {% if result.unreachable | default(false) %}OFFLINE / UNREACHABLE{% elif result.changed | default(false) %}SSH key INSTALLED{% else %}SSH key ALREADY PRESENT{% endif %}
           {% endfor %}
