@@ -1,14 +1,13 @@
-#!/usr/bin/env python3
-
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-# Directory where this script is located
-BASE_DIR = Path(__file__).resolve().parent
+# Logging setup
+LOG_FILE = Path.home() / "svc-1_setup.log"
 
-# Ordered list of scripts to execute
+BASE_DIR = Path.home() / "kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/"
+
 SCRIPTS = [
     "01 - InstallAnsible.py",
     "02 - hostnameSet.yaml",
@@ -30,40 +29,64 @@ SCRIPTS = [
     "16 - reboot.yaml",
 ]
 
+def log_message(msg):
+    """Print to console and append to log file"""
+    print(msg)
+    with open(LOG_FILE, "a") as f:
+        f.write(msg + "\n")
+
 def run_script(script_name):
     script_path = BASE_DIR / script_name
 
     if not script_path.exists():
-        print(f"❌ Script not found: {script_name}")
+        log_message(f"❌ Script not found: {script_name}")
         sys.exit(1)
 
-    print("\n" + "=" * 70)
-    print(f"▶ Running: {script_name}")
-    print("=" * 70)
+    log_message("\n" + "=" * 70)
+    log_message(f"▶ Running: {script_name}")
+    log_message("=" * 70)
 
     if script_name.endswith(".py"):
         cmd = ["python3", str(script_path)]
     elif script_name.endswith((".yaml", ".yml")):
         cmd = ["ansible-playbook", str(script_path)]
     else:
-        print(f"⚠ Unsupported file type: {script_name}")
+        log_message(f"⚠ Unsupported file type: {script_name}")
         return
 
-    result = subprocess.run(cmd)
+    # Capture output and errors
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        output = result.stdout
+        error = result.stderr
 
-    if result.returncode != 0:
-        print(f"\n❌ FAILED: {script_name}")
-        sys.exit(result.returncode)
+        if output:
+            log_message(output)
+        if error:
+            log_message(error)
 
-    print(f"✅ Completed: {script_name}")
-    print("⏳ Sleeping for 5 seconds before next script...\n")
-    time.sleep(5)
+        if result.returncode != 0:
+            log_message(f"\n❌ FAILED: {script_name}")
+            sys.exit(result.returncode)
+
+        log_message(f"✅ Completed: {script_name}")
+        log_message("⏳ Sleeping for 5 seconds before next script...\n")
+        time.sleep(5)
+
+    except Exception as e:
+        log_message(f"💥 Unexpected error running {script_name}: {e}")
+        sys.exit(1)
 
 def main():
+    # Clear or initialize log
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(LOG_FILE, "w") as f:
+        f.write("=== Bastion Node Setup Log ===\n")
+
     for script in SCRIPTS:
         run_script(script)
 
-    print("\n🎉 ALL SCRIPTS EXECUTED SUCCESSFULLY")
+    log_message("\n🎉 ALL SCRIPTS EXECUTED SUCCESSFULLY")
 
 if __name__ == "__main__":
     main()
