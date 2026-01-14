@@ -1,0 +1,78 @@
+---
+- name: Install Kubernetes v1.35 components on Ubuntu
+  hosts: kube-cp-2.kube.lan
+  become: yes
+
+  vars:
+    k8s_version: "v1.35"
+    k8s_keyring: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+  tasks:
+    - name: Update apt cache and upgrade system
+      apt:
+        update_cache: yes
+        upgrade: dist
+        cache_valid_time: 3600
+
+    - name: Install required apt dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gpg
+        state: present
+
+    - name: Ensure keyrings directory exists
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Kubernetes GPG key
+      get_url:
+        url: "https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb/Release.key"
+        dest: /tmp/kubernetes-release.key
+        mode: '0644'
+
+    - name: Dearmor Kubernetes GPG key
+      command: >
+        gpg --dearmor -o {{ k8s_keyring }} /tmp/kubernetes-release.key
+      args:
+        creates: "{{ k8s_keyring }}"
+
+    - name: Add Kubernetes APT repository
+      apt_repository:
+        repo: "deb [signed-by={{ k8s_keyring }}] https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb/ /"
+        filename: kubernetes
+        state: present
+
+    - name: Update apt cache after adding Kubernetes repo
+      apt:
+        update_cache: yes
+
+    - name: Install Kubernetes components
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
+
+    - name: Hold Kubernetes packages at current version
+      dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:
+        - kubelet
+        - kubeadm
+        - kubectl
+
+    - name: Verify kubeadm version
+      command: kubeadm version
+      register: kubeadm_ver
+      changed_when: false
+
+    - name: Show kubeadm version
+      debug:
+        msg: "{{ kubeadm_ver.stdout_lines }}"
