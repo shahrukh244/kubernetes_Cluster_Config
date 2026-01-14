@@ -1,6 +1,6 @@
 ---
 - name: Deploy predefined chrony configuration
-  hosts: kube-cp-2.kube.lan
+  hosts: kube-w-2.kube.lan
   become: true
   vars:
     source_config: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/master_Node_Config/master_Node-02/config_Files/chrony/chrony.conf"
