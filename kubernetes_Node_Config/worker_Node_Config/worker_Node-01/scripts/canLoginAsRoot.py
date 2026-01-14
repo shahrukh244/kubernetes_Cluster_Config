@@ -22,7 +22,7 @@ def ensure_paramiko():
 paramiko = ensure_paramiko()
 
 # ---------- CONFIG ----------
-REMOTE_HOST = "10.0.0.211"
+REMOTE_HOST = "10.0.0.221"
 REMOTE_USER = "ubuntu"
 REMOTE_PASS = "123"
 
