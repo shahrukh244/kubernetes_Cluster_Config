@@ -4,7 +4,7 @@ network:
     ens32:
       dhcp4: no
       addresses:
-        - 192.168.1.12/24
+        - 192.168.1.52/24
       routes:
         - to: default
           via: 192.168.1.1
