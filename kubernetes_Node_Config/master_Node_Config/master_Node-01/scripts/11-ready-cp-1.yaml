@@ -1,0 +1,111 @@
+---
+- name: Initialize Kubernetes Control Plane
+  hosts: kube-cp-1.kube.lan
+  become: yes
+
+  vars:
+    control_plane_endpoint: "10.0.0.1:6443"
+    advertise_address: "10.0.0.111"
+    pod_cidr: "10.244.0.0/16"
+    kubeconfig_path: /etc/kubernetes/admin.conf
+
+  tasks:
+    - name: Check if Kubernetes is already initialized
+      stat:
+        path: /etc/kubernetes/manifests/kube-apiserver.yaml
+      register: kubeadm_init_check
+
+    - name: Initialize Kubernetes control plane
+      command: >
+        kubeadm init
+        --control-plane-endpoint "{{ control_plane_endpoint }}"
+        --apiserver-advertise-address "{{ advertise_address }}"
+        --upload-certs
+        --pod-network-cidr "{{ pod_cidr }}"
+      when: not kubeadm_init_check.stat.exists
+      register: kubeadm_init
+      changed_when: true
+
+    - name: Create .kube directory for root
+      file:
+        path: /root/.kube
+        state: directory
+        mode: '0755'
+
+    - name: Copy admin kubeconfig
+      copy:
+        src: "{{ kubeconfig_path }}"
+        dest: /root/.kube/config
+        owner: root
+        group: root
+        mode: '0644'
+        remote_src: yes
+
+    - name: Set KUBECONFIG environment for root
+      lineinfile:
+        path: /root/.bashrc
+        line: 'export KUBECONFIG=/etc/kubernetes/admin.conf'
+        state: present
+
+    - name: Wait for API server to be reachable
+      shell: |
+        kubectl get nodes
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      register: kubectl_ready
+      retries: 10
+      delay: 15
+      until: kubectl_ready.rc == 0
+
+    # ----------------------------
+    # CNI (Calico)
+    # ----------------------------
+    - name: Install Calico CNI
+      command: kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      when: not kubeadm_init_check.stat.exists
+
+    # ----------------------------
+    # ETCD Client
+    # ----------------------------
+    - name: Install etcd client
+      apt:
+        name: etcd-client
+        state: present
+        update_cache: yes
+
+    - name: Check etcd endpoint health
+      command: >
+        etcdctl
+        --endpoints=https://127.0.0.1:2379
+        --cacert=/etc/kubernetes/pki/etcd/ca.crt
+        --cert=/etc/kubernetes/pki/etcd/peer.crt
+        --key=/etc/kubernetes/pki/etcd/peer.key
+        endpoint health
+      environment:
+        ETCDCTL_API: "3"
+      register: etcd_health
+      changed_when: false
+
+    - name: Show etcd health
+      debug:
+        msg: "{{ etcd_health.stdout_lines }}"
+
+    - name: List etcd members
+      command: >
+        etcdctl
+        --endpoints=https://127.0.0.1:2379
+        --cacert=/etc/kubernetes/pki/etcd/ca.crt
+        --cert=/etc/kubernetes/pki/etcd/peer.crt
+        --key=/etc/kubernetes/pki/etcd/peer.key
+        member list
+      environment:
+        ETCDCTL_API: "3"
+      register: etcd_members
+      changed_when: false
+
+    - name: Show etcd members
+      debug:
+        msg: "{{ etcd_members.stdout_lines }}"
+
