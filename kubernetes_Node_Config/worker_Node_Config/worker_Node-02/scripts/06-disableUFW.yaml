@@ -1,6 +1,6 @@
 ---
 - name: Full Ubuntu system setup with services
-  hosts: kube-cp-2.kube.lan
+  hosts: kube-w-2.kube.lan
   become: true
   gather_facts: true
 
