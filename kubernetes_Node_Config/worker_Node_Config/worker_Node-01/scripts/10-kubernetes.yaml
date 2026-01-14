@@ -1,6 +1,6 @@
 ---
 - name: Install Kubernetes v1.35 components on Ubuntu
-  hosts: kube-cp-2.kube.lan
+  hosts: kube-w-1.kube.lan
   become: yes
 
   vars:
