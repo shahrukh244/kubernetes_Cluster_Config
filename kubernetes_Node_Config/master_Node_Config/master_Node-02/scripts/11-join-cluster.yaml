@@ -1,0 +1,44 @@
+---
+- name: Join kube-cp-2 to Kubernetes cluster as control-plane node
+  hosts: kube-cp-2.kube.lan
+  become: yes
+  vars:
+    primary_master: "kube-cp-1.kube.lan"
+
+  tasks:
+    - name: Fetch control-plane join command from {{ primary_master }}
+      delegate_to: "{{ primary_master }}"
+      delegate_facts: false
+      vars:
+        ansible_user: root
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+      shell: |
+        LB=$(kubectl -n kube-system get cm kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' | grep 'controlPlaneEndpoint' | awk -F': ' '{print $2}' | tr -d '\r\n "')
+        TOKEN=$(kubeadm token create)
+        CERT_KEY=$(kubeadm init phase upload-certs --upload-certs 2>/dev/null | grep -A1 'Using certificate key:' | tail -n1 | tr -d ' ')
+        CA_HASH=$(openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //')
+        echo "kubeadm join ${LB} --token ${TOKEN} --discovery-token-ca-cert-hash sha256:${CA_HASH} --control-plane --certificate-key ${CERT_KEY}"
+      register: join_cmd
+      changed_when: false
+
+    - name: Ensure /etc/kubernetes is clean before joining
+      file:
+        path: /etc/kubernetes
+        state: absent
+
+    - name: Join the cluster as control-plane
+      command: "{{ join_cmd.stdout }}"
+      register: result
+      changed_when: "'[preflight] Running pre-flight checks' in result.stdout"
+
+    - name: Wait for node to register
+      command: kubectl --kubeconfig /etc/kubernetes/admin.conf get node kube-cp-2.kube.lan --no-headers
+      register: node_check
+      until: node_check.rc == 0
+      retries: 10
+      delay: 6
+      changed_when: false
+
+    - name: Success
+      debug:
+        msg: "✅ kube-cp-2.kube.lan joined the control plane successfully!"
