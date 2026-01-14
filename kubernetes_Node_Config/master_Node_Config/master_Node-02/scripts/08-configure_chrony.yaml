@@ -1,0 +1,48 @@
+---
+- name: Deploy predefined chrony configuration
+  hosts: kube-cp-2.kube.lan
+  become: true
+  vars:
+    source_config: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/master_Node_Config/master_Node-01/config_Files/chrony/chrony.conf"
+    dest_config: /etc/chrony/chrony.conf
+
+  tasks:
+    - name: Ensure chrony package is installed
+      apt:
+        name: chrony
+        state: present
+        update_cache: yes
+
+    - name: Verify source chrony config exists on bastion
+      stat:
+        path: "{{ source_config }}"
+      register: source_stat
+      delegate_to: localhost
+      run_once: true
+
+    - name: Fail if source config is missing
+      assert:
+        that:
+          - source_stat.stat.exists
+        fail_msg: "Source config {{ source_config }} not found on bastion."
+        success_msg: "Source config found."
+
+    - name: Copy chrony config from chrony.conf to /etc/chrony/chrony.conf
+      copy:
+        src: "{{ source_config }}"
+        dest: "{{ dest_config }}"
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart chrony
+
+    - name: Show confirmation message
+      debug:
+        msg: "Chrony config deployed from {{ source_config }} to {{ dest_config }}"
+
+  handlers:
+    - name: Restart chrony
+      systemd:
+        name: chrony
+        state: restarted
+        enabled: true
