@@ -1,0 +1,20 @@
+---
+- name: Full Ubuntu system setup with services
+  hosts: kube-cp-2.kube.lan
+  become: true
+  gather_facts: true
+
+  tasks:
+    # -------- UFW (smart & idempotent) --------
+
+    - name: Check if UFW service exists
+      ansible.builtin.stat:
+        path: /lib/systemd/system/ufw.service
+      register: ufw_service
+
+    - name: Stop and disable UFW if present
+      ansible.builtin.service:
+        name: ufw
+        state: stopped
+        enabled: false
+      when: ufw_service.stat.exists
