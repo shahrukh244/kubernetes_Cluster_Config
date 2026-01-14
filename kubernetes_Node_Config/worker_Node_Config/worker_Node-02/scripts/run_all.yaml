@@ -5,8 +5,8 @@
 
   vars:
     target_host: "kube-cp-2.kube.lan"
-    script_path: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/kubernetes_Node_Config/master_Node_Config/master_Node-02/scripts/canLoginAsRoot.py"
-    playbooks_dir: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/kubernetes_Node_Config/master_Node_Config/master_Node-02/scripts"
+    script_path: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/kubernetes_Node_Config/worker_Node_Config/worker_Node-02/scripts/canLoginAsRoot.py"
+    playbooks_dir: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/kubernetes_Node_Config/worker_Node_Config/worker_Node-02/scripts"
 
     playbook_files:
       - 01-hostnameSet.yaml
