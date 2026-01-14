@@ -1,6 +1,6 @@
 ---
 - name: Install CRI-O v1.35 from OpenSUSE OBS (Ubuntu 24.04)
-  hosts: kube-cp-2.kube.lan
+  hosts: kube-w-1.kube.lan
   become: yes
 
   vars:
