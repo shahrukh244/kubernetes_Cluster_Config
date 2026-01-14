@@ -3,7 +3,7 @@
   hosts: kube-cp-2.kube.lan
   become: true
   vars:
-    source_config: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/master_Node_Config/master_Node-01/config_Files/chrony/chrony.conf"
+    source_config: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/master_Node_Config/master_Node-02/config_Files/chrony/chrony.conf"
     dest_config: /etc/chrony/chrony.conf
 
   tasks:
