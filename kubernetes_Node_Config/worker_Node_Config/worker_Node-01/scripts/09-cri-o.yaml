@@ -1,0 +1,60 @@
+---
+- name: Install CRI-O v1.35 from OpenSUSE OBS (Ubuntu 24.04)
+  hosts: kube-cp-2.kube.lan
+  become: yes
+
+  vars:
+    crio_version: "v1.35"
+    crio_keyring: /etc/apt/keyrings/cri-o-apt-keyring.gpg
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Ensure keyrings directory exists
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download CRI-O GPG key
+      get_url:
+        url: "https://download.opensuse.org/repositories/isv:/cri-o:/stable:/{{ crio_version }}/deb/Release.key"
+        dest: /tmp/crio-release.key
+        mode: '0644'
+
+    - name: Dearmor CRI-O GPG key
+      command: >
+        gpg --dearmor -o {{ crio_keyring }} /tmp/crio-release.key
+      args:
+        creates: "{{ crio_keyring }}"
+
+    - name: Add CRI-O APT repository
+      apt_repository:
+        repo: "deb [signed-by={{ crio_keyring }}] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/{{ crio_version }}/deb/ /"
+        filename: cri-o
+        state: present
+
+    - name: Install cri-o package
+      apt:
+        name: cri-o
+        state: present
+        update_cache: yes
+
+    - name: Enable and start CRI-O
+      systemd:
+        name: crio
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    - name: Verify CRI-O version
+      command: crio --version
+      register: crio_ver
+      changed_when: false
+
+    - name: Display CRI-O version
+      debug:
+        msg: "{{ crio_ver.stdout_lines }}"
