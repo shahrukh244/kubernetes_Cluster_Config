@@ -17,6 +17,7 @@
       - 06-disableUFW.yaml
       - 07-enable_ip_forwarding.yaml
       - 08-configure_chrony.yaml
+      - 09-cri-o.yaml
 
   tasks:
     # --------------------------------------------------
