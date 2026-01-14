@@ -9,13 +9,14 @@
     playbooks_dir: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/kubernetes_Node_Config/master_Node_Config/master_Node-01/scripts"
 
     playbook_files:
-      - 00-cloneRepo.yaml
       - 01-hostnameSet.yaml
       - 02-rootLoginEnable.yaml
       - 03-rootPasswdChange.yaml
       - 04-sshKeyGen.yaml
       - 05-disableSwap.yaml
       - 06-disableUFW.yaml
+      - 07-enable_ip_forwarding.yaml
+      - 08-configure_chrony.yaml
 
   tasks:
     # --------------------------------------------------
