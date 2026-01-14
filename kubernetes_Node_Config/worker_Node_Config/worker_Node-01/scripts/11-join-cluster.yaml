@@ -1,0 +1,60 @@
+---
+- name: Join worker node to Kubernetes cluster
+  hosts: kube-w-1.kube.lan
+  become: yes
+  vars:
+    primary_master: "kube-cp-1.kube.lan"
+
+  tasks:
+    - name: Fetch worker join command from {{ primary_master }}
+      delegate_to: "{{ primary_master }}"
+      delegate_facts: false
+      vars:
+        ansible_user: root
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+      shell: |
+        #!/bin/bash
+        set -euo pipefail
+        LB=$(kubectl --kubeconfig=/etc/kubernetes/admin.conf -n kube-system \
+              get cm kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' \
+              | tr -d '\n' | sed -E 's/.*controlPlaneEndpoint:[[:space:]]*["]?([^":]+:[0-9]+)["]?.*/\1/')
+        
+        if [ -z "$LB" ]; then
+          echo "ERROR: Could not extract controlPlaneEndpoint" >&2
+          exit 1
+        fi
+
+        TOKEN=$(kubeadm --kubeconfig=/etc/kubernetes/admin.conf token create --ttl=1h)
+        CA_HASH=$(openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | cut -d' ' -f2)
+
+        echo "kubeadm join ${LB} --token ${TOKEN} --discovery-token-ca-cert-hash sha256:${CA_HASH}"
+      args:
+        executable: /bin/bash
+      register: join_cmd
+      changed_when: false
+
+    - name: Display join command
+      debug:
+        msg: "Join command: {{ join_cmd.stdout }}"
+
+    - name: Ensure /etc/kubernetes is clean
+      file:
+        path: /etc/kubernetes
+        state: absent
+
+    - name: Join the cluster as worker
+      command: "{{ join_cmd.stdout }}"
+      register: result
+      changed_when: "'[preflight] Running pre-flight checks' in result.stdout"
+
+    - name: Wait for node registration
+      command: kubectl --kubeconfig /etc/kubernetes/kubelet.conf get node {{ inventory_hostname }} --no-headers
+      register: node_check
+      until: node_check.rc == 0
+      retries: 15
+      delay: 8
+      changed_when: false
+
+    - name: Success
+      debug:
+        msg: "✅ {{ inventory_hostname }} joined successfully!"
