@@ -21,8 +21,6 @@ SCRIPTS = [
     "09-configure_chrony.yaml",
     "10-install_oc_cli.yaml",
     "11-install_kubectl.yaml",
-    "12-all_Node_Passwd-Less.yaml",
-    "13-fetch_kubeconfig.yaml",
     "12-reboot.yaml",
 ]
 
