@@ -1,0 +1,52 @@
+---
+- name: Ensure IP forwarding is enabled (net.ipv4.ip_forward = 1)
+  hosts: kube-cp-1.kube.lan
+  become: true
+  vars:
+    sysctl_config_file: /etc/sysctl.d/99-kubernetes-cri.conf
+    desired_setting: "net.ipv4.ip_forward=1"
+
+  tasks:
+    - name: Check current value of net.ipv4.ip_forward
+      command: sysctl -n net.ipv4.ip_forward
+      changed_when: false
+      check_mode: no
+      register: current_ip_forward_value
+
+    - name: Ensure sysctl.d directory exists
+      file:
+        path: /etc/sysctl.d
+        state: directory
+        mode: '0755'
+
+    - name: Read existing config file (if any)
+      slurp:
+        src: "{{ sysctl_config_file }}"
+      register: existing_config_slurp
+      failed_when: false
+      changed_when: false
+
+    - name: Set fact for existing config content
+      set_fact:
+        existing_config_content: "{{ (existing_config_slurp.content | b64decode) if existing_config_slurp.content is defined else '' }}"
+
+    - name: Write net.ipv4.ip_forward=1 to sysctl config file
+      copy:
+        content: "{{ desired_setting }}\n"
+        dest: "{{ sysctl_config_file }}"
+        owner: root
+        group: root
+        mode: '0644'
+      when: desired_setting not in existing_config_content
+      notify: Reload sysctl
+
+    - name: Report current and target state
+      debug:
+        msg: >
+          IP forwarding is currently '{{ current_ip_forward_value.stdout }}'.
+          Config file '{{ sysctl_config_file }}' {{ ('already contains' if desired_setting in existing_config_content else 'will be updated to contain') }} '{{ desired_setting }}'.
+
+  handlers:
+    - name: Reload sysctl
+      command: sysctl --system
+      listen: "Reload sysctl"
