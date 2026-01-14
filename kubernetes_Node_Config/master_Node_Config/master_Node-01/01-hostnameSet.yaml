@@ -1,6 +1,6 @@
 ---
 - name: Hostname Setup
-  hosts: localhost
+  hosts: kube-cp-1.kube.lan
   become: true
   gather_facts: true
 
