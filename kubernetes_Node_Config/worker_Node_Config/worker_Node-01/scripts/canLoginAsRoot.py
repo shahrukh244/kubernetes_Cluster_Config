@@ -141,7 +141,7 @@ def main():
     enable_root_key_ssh(chan)
 
     ssh.close()
-    print("[✓] DONE: You can now SSH as root without prompt → ssh root@10.0.0.112")
+    print("[✓] DONE: You can now SSH as root without prompt → ssh root@10.0.0.221")
 
 
 if __name__ == "__main__":
