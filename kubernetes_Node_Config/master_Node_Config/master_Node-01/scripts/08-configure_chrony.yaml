@@ -27,7 +27,7 @@
         fail_msg: "Source config {{ source_config }} not found on bastion."
         success_msg: "Source config found."
 
-    - name: Copy chrony config from /root/chrony.conf to /etc/chrony/chrony.conf
+    - name: Copy chrony config from chrony.conf to /etc/chrony/chrony.conf
       copy:
         src: "{{ source_config }}"
         dest: "{{ dest_config }}"
