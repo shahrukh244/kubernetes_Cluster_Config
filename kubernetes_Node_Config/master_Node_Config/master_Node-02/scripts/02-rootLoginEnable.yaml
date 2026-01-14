@@ -1,0 +1,54 @@
+---
+- name: Full Ubuntu system setup with services
+  hosts: kube-cp-2.kube.lan
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    # -------- SSH (smart & idempotent) --------
+
+    - name: Read sshd_config
+      ansible.builtin.slurp:
+        path: /etc/ssh/sshd_config
+      register: sshd_config_raw
+      changed_when: false
+
+    - name: Decode sshd_config
+      ansible.builtin.set_fact:
+        sshd_config: "{{ sshd_config_raw.content | b64decode }}"
+      changed_when: false
+
+    # ---- PermitRootLogin ----
+    - name: Ensure PermitRootLogin yes
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^[#\s]*PermitRootLogin\s+'
+        line: 'PermitRootLogin yes'
+      when: "'PermitRootLogin yes' not in sshd_config"
+      notify: Restart SSH
+
+    # ---- PasswordAuthentication ----
+    - name: Ensure PasswordAuthentication yes
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^[#\s]*PasswordAuthentication\s+'
+        line: 'PasswordAuthentication yes'
+      when: "'PasswordAuthentication yes' not in sshd_config"
+      notify: Restart SSH
+
+    # ---- UsePAM ----
+    - name: Ensure UsePAM yes
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^[#\s]*UsePAM\s+'
+        line: 'UsePAM yes'
+      when: "'UsePAM yes' not in sshd_config"
+      notify: Restart SSH
+
+  handlers:
+
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
