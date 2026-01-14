@@ -1,6 +1,6 @@
 ---
 - name: Ensure IP forwarding is enabled (net.ipv4.ip_forward = 1)
-  hosts: kube-cp-2.kube.lan
+  hosts: kube-cp-3.kube.lan
   become: true
   vars:
     sysctl_config_file: /etc/sysctl.d/99-kubernetes-cri.conf
