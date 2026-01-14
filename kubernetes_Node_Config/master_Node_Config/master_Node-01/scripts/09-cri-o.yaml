@@ -4,7 +4,7 @@
   become: yes
 
   vars:
-    crio_version: "v1.34"
+    crio_version: "v1.35"
     crio_keyring: /etc/apt/keyrings/cri-o-apt-keyring.gpg
 
   tasks:
