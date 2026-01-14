@@ -1,15 +1,71 @@
 ---
-- name: Prepare root SSH access to 10.0.0.111
+- name: Prepare and run master node configuration
   hosts: localhost
   gather_facts: false
+
+  vars:
+    target_host: "kube-cp-1.kube.lan"
+    script_path: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/kubernetes_Node_Config/master_Node_Config/master_Node-01/scripts/canLoginAsRoot.py"
+    playbooks_dir: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/kubernetes_Node_Config/master_Node_Config/master_Node-01/scripts"
+
+    playbook_files:
+      - 00-cloneRepo.yaml
+      - 01-hostnameSet.yaml
+      - 02-rootLoginEnable.yaml
+      - 03-rootPasswdChange.yaml
+      - 04-sshKeyGen.yaml
+      - 05-disableSwap.yaml
+      - 06-disableUFW.yaml
+
   tasks:
-    - name: Test SSH connectivity as root (non-fatal)
-      ansible.builtin.command: ssh -o BatchMode=yes -o ConnectTimeout=10 root@kube-cp-1.kube.lan 'echo OK'
-      ignore_errors: yes
-      register: ssh_test
+    # --------------------------------------------------
+    # Step 1: Initial SSH test
+    # --------------------------------------------------
+    - name: Test initial SSH connectivity as root
+      ansible.builtin.command: >
+        ssh -o BatchMode=yes
+            -o ConnectTimeout=10
+            -o StrictHostKeyChecking=no
+            root@{{ target_host }} "echo OK"
+      register: ssh_test_1
+      failed_when: false
       changed_when: false
 
+    # --------------------------------------------------
+    # Step 2: Enable root login if needed
+    # --------------------------------------------------
     - name: Run canLoginAsRoot.py if SSH failed
-      ansible.builtin.command: python3 "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/kubernetes_Node_Config/master_Node_Config/master_Node-01/scripts/canLoginAsRoot.py"
-      when: ssh_test.failed
+      ansible.builtin.command: python3 "{{ script_path }}"
+      when: ssh_test_1.rc != 0
+      register: script_result
+      changed_when: true
+
+    - name: Abort if canLoginAsRoot.py failed
+      ansible.builtin.fail:
+        msg: "canLoginAsRoot.py failed. Cannot proceed."
+      when:
+        - ssh_test_1.rc != 0
+        - script_result.rc != 0
+
+    # --------------------------------------------------
+    # Step 3: Re-test SSH
+    # --------------------------------------------------
+    - name: Re-test SSH connectivity as root
+      ansible.builtin.command: >
+        ssh -o BatchMode=yes
+            -o ConnectTimeout=10
+            -o StrictHostKeyChecking=no
+            root@{{ target_host }} "echo OK"
+      register: ssh_test_2
+      failed_when: ssh_test_2.rc != 0
+      changed_when: false
+
+    # --------------------------------------------------
+    # Step 4: Run playbooks WITH 5s delay between each
+    # --------------------------------------------------
+    - name: Run playbooks sequentially with 5s hold
+      ansible.builtin.shell: |
+        ansible-playbook {{ playbooks_dir }}/{{ item }}
+        sleep 5
+      loop: "{{ playbook_files }}"
       changed_when: true
