@@ -1,6 +1,6 @@
 ---
 - name: Install kubectl (stable version)
-  hosts: localhost
+  hosts: bastion.kube.lan
   become: true
   vars:
     kubectl_dest: /usr/local/bin/kubectl
