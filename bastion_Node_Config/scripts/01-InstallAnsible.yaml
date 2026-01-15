@@ -1,0 +1,118 @@
+---
+- name: Smart Ansible Installer on remote node
+  hosts: svc-2.kube.lan
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    # ----------------------------
+    # 1. Check if Ansible is installed
+    # ----------------------------
+    - name: Check if Ansible is already installed
+      ansible.builtin.command: ansible --version
+      register: ansible_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Install Ansible if not installed
+      ansible.builtin.apt:
+        name: ansible
+        state: present
+        update_cache: yes
+      when: ansible_check.failed
+
+    # ----------------------------
+    # 2. Ensure /root/.ansible exists
+    # ----------------------------
+    - name: Ensure /root/.ansible directory exists
+      ansible.builtin.file:
+        path: /root/.ansible
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    # ----------------------------
+    # 3. Copy ansible.cfg if missing or different
+    # ----------------------------
+    
+    - name: Check if ansible.cfg exists in repo
+      ansible.builtin.stat:
+        path: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/ansible/ansible.cfg
+      register: ansible_cfg
+
+    - name: Fail if ansible.cfg is missing in repo
+      ansible.builtin.fail:
+        msg: "ansible.cfg not found in repo!"
+      when: not ansible_cfg.stat.exists
+
+    - name: Copy ansible.cfg to /root/.ansible.cfg if missing or changed
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/ansible/ansible.cfg
+        dest: /root/.ansible.cfg
+        owner: root
+        group: root
+        mode: "0644"
+        backup: yes
+      register: ansible_cfg_copy
+
+    - name: Debug ansible.cfg copy status
+      ansible.builtin.debug:
+        msg: "ansible.cfg {{ 'copied/updated' if ansible_cfg_copy.changed else 'already up-to-date' }}"
+
+    # ----------------------------
+    # 4. Inventory: check, copy or create localhost
+    # ----------------------------
+    - name: Check if inventory exists in repo
+      ansible.builtin.stat:
+        path: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/ansible/hosts
+      register: inventory_repo
+
+    - name: Copy inventory if exists in repo
+      ansible.builtin.copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/config_Files/ansible/hosts
+        dest: /root/.ansible/hosts
+        owner: root
+        group: root
+        mode: "0644"
+        backup: yes
+      when: inventory_repo.stat.exists
+      register: inventory_copy
+
+    - name: Create localhost inventory if missing
+      ansible.builtin.copy:
+        dest: /root/.ansible/hosts
+        content: |
+          [all]
+          localhost ansible_connection=local
+        owner: root
+        group: root
+        mode: "0644"
+      when: not inventory_repo.stat.exists
+      register: inventory_local
+
+    - name: Debug inventory status
+      ansible.builtin.debug:
+        msg: >
+          {% if inventory_repo.stat.exists %}
+            Inventory {{ 'copied' if inventory_copy.changed else 'already up-to-date' }}
+          {% else %}
+            Localhost inventory {{ 'created' if inventory_local.changed else 'already exists' }}
+          {% endif %}
+
+    # ----------------------------
+    # 5. Verify Ansible works
+    # ----------------------------
+    - name: Verify Ansible ping on localhost
+      ansible.builtin.command: ansible localhost -m ping
+      register: ping_result
+      changed_when: false
+      failed_when: "'\"pong\"' not in ping_result.stdout"
+
+    - name: Confirm Ansible is ready
+      ansible.builtin.debug:
+        msg:
+          - "🎉 Ansible is READY!"
+          - "📄 Config   : /root/.ansible.cfg"
+          - "📦 Inventory: /root/.ansible/hosts"
