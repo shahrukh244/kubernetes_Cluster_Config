@@ -5,7 +5,7 @@
 
   vars:
     target_host: "bastion.kube.lan"
-    script_path: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/bastion_Node_Config/scripts/scripts/canLoginAsRoot.py"
+    script_path: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/bastion_Node_Config/scripts/canLoginAsRoot.py"
     playbooks_dir: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/bastion_Node_Config/scripts/"
 
     playbook_files:
