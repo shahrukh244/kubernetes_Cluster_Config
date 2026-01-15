@@ -1,6 +1,6 @@
 ---
 - name: Netplan Config Installer
-  hosts: localhost
+  hosts: svc-2.kube.lan
   become: true
   gather_facts: true
 
