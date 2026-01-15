@@ -10,18 +10,18 @@
 
     playbook_files:
     - "cloneRepo.yaml"
-    - "01-InstallAnsible.yaml",
-    - "02-hostnameSet.yaml",
-    - "03-rootLoginEnable.yaml",
-    - "04-rootPasswdChange.yaml",
-    - "05-sshKeyGen.yaml",
-    - "06-disableSwap.yaml",
-    - "07-disableUFW.yaml",
-    - "08-enable_ip_forwarding.yaml",
-    - "09-configure_chrony.yaml",
-    - "10-install_oc_cli.yaml",
-    - "11-install_kubectl.yaml",
-    - "12-reboot.yaml",
+    - "01-InstallAnsible.yaml"
+    - "02-hostnameSet.yaml"
+    - "03-rootLoginEnable.yaml"
+    - "04-rootPasswdChange.yaml"
+    - "05-sshKeyGen.yaml"
+    - "06-disableSwap.yaml"
+    - "07-disableUFW.yaml"
+    - "08-enable_ip_forwarding.yaml"
+    - "09-configure_chrony.yaml"
+    - "10-install_oc_cli.yaml"
+    - "11-install_kubectl.yaml"
+    - "12-reboot.yaml"
 
   tasks:
     # --------------------------------------------------
