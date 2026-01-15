@@ -1,6 +1,6 @@
 ---
 - name: Root Password Setup
-  hosts: localhost
+  hosts: bastion.kube.lan
   become: true
   gather_facts: true
 
