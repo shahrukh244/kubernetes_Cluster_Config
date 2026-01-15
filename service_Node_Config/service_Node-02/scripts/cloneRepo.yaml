@@ -34,16 +34,6 @@
         msg: "Repository clone failed: {{ dest_dir }} does not exist!"
       when: not repo_dir_stat.stat.exists
 
-    - name: Verify key files are present (optional but recommended)
-      ansible.builtin.stat:
-        path: "{{ dest_dir }}/service_Node_Config/service_Node-01/01-set_IP.py"
-      register: key_file_stat
-
-    - name: Fail if expected script is missing
-      ansible.builtin.fail:
-        msg: "Cloned repo is incomplete: 01-set_IP.py not found!"
-      when: not key_file_stat.stat.exists
-
     - name: Report successful clone
       ansible.builtin.debug:
         msg: "[+] Repository successfully cloned to {{ dest_dir }}"
