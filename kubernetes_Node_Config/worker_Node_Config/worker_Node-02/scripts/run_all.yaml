@@ -19,6 +19,8 @@
       - 08-configure_chrony.yaml
       - 09-cri-o.yaml
       - 10-kubernetes.yaml
+      - 11-join-cluster.yaml
+      - 12-lable-set.yaml
 
   tasks:
     # --------------------------------------------------
