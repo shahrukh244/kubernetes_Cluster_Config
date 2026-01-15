@@ -1,6 +1,6 @@
 ---
 - name: Reboot System in 15sec
-  hosts: localhost
+  hosts: bastion.kube.lan
   become: true
   gather_facts: true
 
