@@ -1,6 +1,6 @@
 ---
 - name: Deploy predefined chrony configuration
-  hosts: localhost
+  hosts: bastion.kube.lan
   become: true
   vars:
     source_config: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/bastion_Node_Config/config_Files/chrony/chrony.conf"
