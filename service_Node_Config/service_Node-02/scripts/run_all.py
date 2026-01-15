@@ -1,14 +1,14 @@
-import subprocess
-import sys
-import time
-from pathlib import Path
+---
+- name: Prepare and run master node configuration
+  hosts: localhost
+  gather_facts: false
 
-# Logging setup
-LOG_FILE = Path.home() / "svc-2_setup.log"
+  vars:
+    target_host: "svc-2.kube.lan"
+    script_path: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/scripts/canLoginAsRoot.py"
+    playbooks_dir: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/scripts/"
 
-BASE_DIR = Path.home() / "kubernetes_Cluster_Config/service_Node_Config/service_Node-02/scripts/"
-
-SCRIPTS = [
+    playbook_files:
     "01-InstallAnsible.py",
     "02-hostnameSet.yaml",
     "03-setIP.yaml",
@@ -24,66 +24,56 @@ SCRIPTS = [
     "13-ntp.yaml",
     "14-haproxy.yaml",
     "15-reboot.yaml",
-]
 
-def log_message(msg):
-    """Print to console and append to log file"""
-    print(msg)
-    with open(LOG_FILE, "a") as f:
-        f.write(msg + "\n")
+  tasks:
+    # --------------------------------------------------
+    # Step 1: Initial SSH test
+    # --------------------------------------------------
+    - name: Test initial SSH connectivity as root
+      ansible.builtin.command: >
+        ssh -o BatchMode=yes
+            -o ConnectTimeout=10
+            -o StrictHostKeyChecking=no
+            root@{{ target_host }} "echo OK"
+      register: ssh_test_1
+      failed_when: false
+      changed_when: false
 
-def run_script(script_name):
-    script_path = BASE_DIR / script_name
+    # --------------------------------------------------
+    # Step 2: Enable root login if needed
+    # --------------------------------------------------
+    - name: Run canLoginAsRoot.py if SSH failed
+      ansible.builtin.command: python3 "{{ script_path }}"
+      when: ssh_test_1.rc != 0
+      register: script_result
+      changed_when: true
 
-    if not script_path.exists():
-        log_message(f"❌ Script not found: {script_name}")
-        sys.exit(1)
+    - name: Abort if canLoginAsRoot.py failed
+      ansible.builtin.fail:
+        msg: "canLoginAsRoot.py failed. Cannot proceed."
+      when:
+        - ssh_test_1.rc != 0
+        - script_result.rc != 0
 
-    log_message("\n" + "=" * 70)
-    log_message(f"▶ Running: {script_name}")
-    log_message("=" * 70)
+    # --------------------------------------------------
+    # Step 3: Re-test SSH
+    # --------------------------------------------------
+    - name: Re-test SSH connectivity as root
+      ansible.builtin.command: >
+        ssh -o BatchMode=yes
+            -o ConnectTimeout=10
+            -o StrictHostKeyChecking=no
+            root@{{ target_host }} "echo OK"
+      register: ssh_test_2
+      failed_when: ssh_test_2.rc != 0
+      changed_when: false
 
-    if script_name.endswith(".py"):
-        cmd = ["python3", str(script_path)]
-    elif script_name.endswith((".yaml", ".yml")):
-        cmd = ["ansible-playbook", str(script_path)]
-    else:
-        log_message(f"⚠ Unsupported file type: {script_name}")
-        return
-
-    # Capture output and errors
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        output = result.stdout
-        error = result.stderr
-
-        if output:
-            log_message(output)
-        if error:
-            log_message(error)
-
-        if result.returncode != 0:
-            log_message(f"\n❌ FAILED: {script_name}")
-            sys.exit(result.returncode)
-
-        log_message(f"✅ Completed: {script_name}")
-        log_message("⏳ Sleeping for 5 seconds before next script...\n")
-        time.sleep(5)
-
-    except Exception as e:
-        log_message(f"💥 Unexpected error running {script_name}: {e}")
-        sys.exit(1)
-
-def main():
-    # Clear or initialize log
-    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(LOG_FILE, "w") as f:
-        f.write("=== Bastion Node Setup Log ===\n")
-
-    for script in SCRIPTS:
-        run_script(script)
-
-    log_message("\n🎉 ALL SCRIPTS EXECUTED SUCCESSFULLY")
-
-if __name__ == "__main__":
-    main()
+    # --------------------------------------------------
+    # Step 4: Run playbooks WITH 5s delay between each
+    # --------------------------------------------------
+    - name: Run playbooks sequentially with 5s hold
+      ansible.builtin.shell: |
+        ansible-playbook {{ playbooks_dir }}/{{ item }}
+        sleep 5
+      loop: "{{ playbook_files }}"
+      changed_when: true
