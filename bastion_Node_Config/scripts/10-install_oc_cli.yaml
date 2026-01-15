@@ -1,6 +1,6 @@
 ---
 - name: Install OpenShift 'oc' CLI client (v4.14.9)
-  hosts: localhost
+  hosts: bastion.kube.lan
   become: true
   vars:
     oc_url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.14.9/openshift-client-linux.tar.gz"
