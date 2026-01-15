@@ -1,0 +1,49 @@
+---
+- name: Verify and label Kubernetes worker node
+  hosts: kube-cp-1.kube.lan
+  become: yes
+  gather_facts: false
+
+  vars:
+    kubeconfig: /etc/kubernetes/admin.conf
+    node_name: kube-w-1.kube.lan
+    label_key: node-role.kubernetes.io/worker
+    label_value: worker
+
+  tasks:
+    # ----------------------------------------------
+    # VERIFY LABEL
+    # ----------------------------------------------
+    - name: Check if worker label exists
+      command: >
+        kubectl
+        --kubeconfig {{ kubeconfig }}
+        get node {{ node_name }}
+        -o jsonpath='{.metadata.labels.{{ label_key | replace(".", "\\.") }}}'
+      register: label_check
+      changed_when: false
+      failed_when: false
+
+    - name: Show current label value
+      debug:
+        msg: >
+          Current value of {{ label_key }}:
+          {{ label_check.stdout | default('NOT SET') }}
+
+    # ----------------------------------------------
+    # APPLY LABEL ONLY IF MISSING
+    # ----------------------------------------------
+    - name: Apply worker label if missing
+      command: >
+        kubectl
+        --kubeconfig {{ kubeconfig }}
+        label node {{ node_name }}
+        {{ label_key }}={{ label_value }}
+      when: label_check.stdout != label_value
+      register: label_apply
+      changed_when: true
+
+    - name: Label already present – skipping
+      debug:
+        msg: "✔ Node {{ node_name }} already has label {{ label_key }}={{ label_value }}"
+      when: label_check.stdout == label_value
