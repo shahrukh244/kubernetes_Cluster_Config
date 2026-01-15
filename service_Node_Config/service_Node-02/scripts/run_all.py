@@ -9,7 +9,7 @@
     playbooks_dir: "{{ lookup('env', 'HOME') }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-02/scripts/"
 
     playbook_files:
-    "01-InstallAnsible.py",
+    "01-InstallAnsible.yaml",
     "02-hostnameSet.yaml",
     "03-setIP.yaml",
     "04-NAT.yaml",
