@@ -18,7 +18,7 @@
         LB=$(kubectl --kubeconfig=/etc/kubernetes/admin.conf -n kube-system \
               get cm kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' \
               | tr -d '\n' | sed -E 's/.*controlPlaneEndpoint:[[:space:]]*["]?([^":]+:[0-9]+)["]?.*/\1/')
-        
+
         if [ -z "$LB" ]; then
           echo "ERROR: Could not extract controlPlaneEndpoint" >&2
           exit 1
@@ -47,14 +47,29 @@
       register: result
       changed_when: "'[preflight] Running pre-flight checks' in result.stdout"
 
-    - name: Wait for node registration
-      command: kubectl --kubeconfig /etc/kubernetes/kubelet.conf get node {{ inventory_hostname }} --no-headers
-      register: node_check
-      until: node_check.rc == 0
-      retries: 15
-      delay: 8
-      changed_when: false
-
     - name: Success
       debug:
         msg: "✅ {{ inventory_hostname }} joined successfully!"
+
+
+    - name: Wait for node to become Ready
+      command: >
+        kubectl --kubeconfig /etc/kubernetes/admin.conf
+        get node {{ inventory_hostname }}
+        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      register: node_ready_status
+      until: node_ready_status.stdout == "True"
+      retries: 30
+      delay: 10
+      changed_when: false
+      delegate_to: "{{ primary_master }}"
+      vars:
+        ansible_user: root
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+
+    - name: Debug node ready status
+      debug:
+        msg: "Node ready status: '{{ node_ready_status.stdout }}'"
+      when: node_ready_status.stdout != "True"
+
+      
