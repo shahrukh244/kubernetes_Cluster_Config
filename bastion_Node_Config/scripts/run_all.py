@@ -10,7 +10,7 @@
 
     playbook_files:
     - "cloneRepo.yaml"
-    - "01-InstallAnsible.py",
+    - "01-InstallAnsible.yaml",
     - "02-hostnameSet.yaml",
     - "03-rootLoginEnable.yaml",
     - "04-rootPasswdChange.yaml",
