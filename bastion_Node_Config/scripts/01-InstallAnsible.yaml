@@ -1,6 +1,6 @@
 ---
 - name: Smart Ansible Installer on remote node
-  hosts: svc-2.kube.lan
+  hosts: bastion.kube.lan
   become: true
   gather_facts: true
 
