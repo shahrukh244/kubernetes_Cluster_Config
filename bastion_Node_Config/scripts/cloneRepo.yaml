@@ -1,0 +1,39 @@
+---
+- name: Clone Kubernetes Cluster Config Repository
+  hosts: bastion.kube.lan
+  become: true
+  gather_facts: true
+
+  vars:
+    repo_url: "https://github.com/shahrukh244/kubernetes_Cluster_Config.git"
+    dest_dir: "/root/kubernetes_Cluster_Config"
+
+  tasks:
+    - name: Ensure git is installed
+      ansible.builtin.apt:
+        name: git
+        state: present
+        update_cache: yes
+
+    - name: Clone kubernetes_Cluster_Config repo
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ dest_dir }}"
+        version: "HEAD"
+        force: yes
+        update: yes
+        accept_hostkey: yes
+
+    - name: Verify repository directory exists
+      ansible.builtin.stat:
+        path: "{{ dest_dir }}"
+      register: repo_dir_stat
+
+    - name: Fail if repository was not cloned
+      ansible.builtin.fail:
+        msg: "Repository clone failed: {{ dest_dir }} does not exist!"
+      when: not repo_dir_stat.stat.exists
+
+    - name: Report successful clone
+      ansible.builtin.debug:
+        msg: "[+] Repository successfully cloned to {{ dest_dir }}"
