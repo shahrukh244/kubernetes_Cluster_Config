@@ -1,23 +1,14 @@
 ---
-- name: DRBD setup + sync + monitor
-  hosts:
-    - svc-1.kube.lan
-    - svc-2.kube.lan
+- name: DRBD Pre-checks on both nodes
+  hosts: [svc-1.kube.lan, svc-2.kube.lan]
   become: true
   gather_facts: true
   serial: 0
-
   vars:
     vg_name: drbd_vg
     lv_name: drbd_lv
-    drbd_res: kube
-    drbd_device: /dev/drbd0
     backing_lv: "/dev/{{ vg_name }}/{{ lv_name }}"
-    monitor_script: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py"
 
-  ##################################################
-  # VERIFY BACKING STORAGE
-  ##################################################
   tasks:
     - name: Verify backing LV exists
       stat:
@@ -29,9 +20,33 @@
         msg: "Backing LV {{ backing_lv }} missing on {{ inventory_hostname }}"
       when: not lv_stat.stat.exists
 
-    ##################################################
-    # INSTALL DRBD
-    ##################################################
+    - name: Mark node as verified
+      set_fact:
+        drbd_node_verified: true
+
+- name: Ensure BOTH nodes passed pre-checks
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Abort if any node failed verification
+      fail:
+        msg: "DRBD pre-check failed on one or both nodes. Aborting entire setup."
+      when: >
+        not hostvars['svc-1.kube.lan'].get('drbd_node_verified', false) or
+        not hostvars['svc-2.kube.lan'].get('drbd_node_verified', false)
+
+- name: Install and configure DRBD on both nodes
+  hosts: [svc-1.kube.lan, svc-2.kube.lan]
+  become: true
+  gather_facts: false
+  serial: 0
+  vars:
+    vg_name: drbd_vg
+    lv_name: drbd_lv
+    drbd_res: kube
+    backing_lv: "/dev/{{ vg_name }}/{{ lv_name }}"
+
+  tasks:
     - name: Install DRBD packages
       apt:
         name:
@@ -52,9 +67,6 @@
         content: "drbd\n"
         mode: '0644'
 
-    ##################################################
-    # DRBD CONFIG
-    ##################################################
     - name: Install DRBD resource file
       copy:
         src: kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/drbd-nfs/kube.res
@@ -67,54 +79,57 @@
       command: drbdadm dump {{ drbd_res }}
       changed_when: false
 
-    ##################################################
-    # DRBD INITIALIZATION
-    ##################################################
+- name: Initialize DRBD resources on both nodes
+  hosts: [svc-1.kube.lan, svc-2.kube.lan]
+  become: true
+  gather_facts: false
+  serial: 0
+  vars:
+    drbd_res: kube
+
+  tasks:
     - name: Check DRBD status
       command: drbdadm status {{ drbd_res }}
       register: drbd_status
       failed_when: false
       changed_when: false
 
-    - name: Create DRBD metadata (first time only)
-      command: drbdadm create-md {{ drbd_res }}
+    - name: Create DRBD metadata (only if missing)
+      command: drbdadm create-md --force {{ drbd_res }}
       when: drbd_status.rc != 0
 
-    - name: Bring DRBD resource up
+    - name: Bring DRBD resource up (idempotent)
       command: drbdadm up {{ drbd_res }}
+      register: drbd_up_result
+      failed_when: 
+        - drbd_up_result.rc != 0
+        - "'is configured' not in drbd_up_result.stderr"
       changed_when: false
 
-    ##################################################
-    # PROMOTION (svc-1 ONLY)
-    ##################################################
-    - name: Promote svc-1 to Primary
+- name: Promote Primary and wait for sync
+  hosts: svc-1.kube.lan
+  become: true
+  gather_facts: false
+  vars:
+    drbd_res: kube
+
+  tasks:
+    - name: Promote to Primary (idempotent)
       command: drbdadm primary --force {{ drbd_res }}
-      when: inventory_hostname == "svc-1.kube.lan"
+      register: promote_result
+      failed_when: 
+        - promote_result.rc != 0
+        - "'already primary' not in promote_result.stderr"
       changed_when: false
 
-##################################################
-# DRBD SYNC MONITOR (CUSTOM SCRIPT)
-##################################################
-- name: Verify DRBD disk monitor script exists
-  stat:
-    path: "{{ monitor_script }}"
-  register: monitor_stat
-
-- name: Fail if DRBD disk monitor script missing
-  fail:
-    msg: "DRBD monitor script not found: {{ monitor_script }}"
-  when: not monitor_stat.stat.exists
-
-- name: Ensure DRBD monitor script is executable
-  file:
-    path: "{{ monitor_script }}"
-    mode: '0755'
-
-- name: Wait for DRBD sync using custom monitor script
-  command: python3 {{ monitor_script }}
-  register: monitor_result
-  retries: 60
-  delay: 10
-  until: monitor_result.rc == 0
-  changed_when: false
-
+    - name: Wait for DRBD sync to complete
+      shell: |
+        grep -q 'ds:UpToDate/UpToDate' /proc/drbd && \
+        grep -q 'cs:Connected' /proc/drbd && \
+        ! grep -q 'oos:[^0]' /proc/drbd
+      register: drbd_sync_check
+      retries: 60
+      delay: 10
+      until: drbd_sync_check.rc == 0
+      changed_when: false
+      failed_when: false
