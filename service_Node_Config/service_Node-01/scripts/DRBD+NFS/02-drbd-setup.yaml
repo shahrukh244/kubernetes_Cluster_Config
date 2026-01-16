@@ -70,7 +70,7 @@
 
     - name: Install DRBD resource file
       copy:
-        src: kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/drbd-nfs/kube.res
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/drbd-nfs/kube.res
         dest: /etc/drbd.d/kube.res
         owner: root
         group: root
