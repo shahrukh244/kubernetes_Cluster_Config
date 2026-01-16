@@ -1,0 +1,129 @@
+---
+- name: DRBD setup (atomic, svc-1 primary)
+  hosts:
+    - svc-1.kube.lan
+    - svc-2.kube.lan
+  become: true
+  gather_facts: true
+
+  vars:
+    drbd_resource: kube
+    drbd_disk: /dev/drbd_vg/drbd_lv
+    primary_node: svc-1.kube.lan
+
+  tasks:
+    # ==================================================
+    # DISK VERIFICATION
+    # ==================================================
+
+    - name: Verify backing LV exists
+      stat:
+        path: "{{ drbd_disk }}"
+      register: lv_check
+
+    - name: Fail if backing LV missing
+      fail:
+        msg: "Backing LV {{ drbd_disk }} not found"
+      when: not lv_check.stat.exists
+
+    - name: Dry-run wipefs (safety)
+      command: wipefs -n {{ drbd_disk }}
+      changed_when: false
+
+    # ==================================================
+    # PACKAGES
+    # ==================================================
+
+    - name: Install DRBD + NFS packages
+      apt:
+        name:
+          - drbd-utils
+          - nfs-kernel-server
+          - nfs-common
+          - rpcbind
+        state: present
+        update_cache: yes
+
+    # ==================================================
+    # KERNEL MODULE
+    # ==================================================
+
+    - name: Load DRBD kernel module
+      modprobe:
+        name: drbd
+        state: present
+
+    - name: Verify DRBD module loaded
+      stat:
+        path: /sys/module/drbd
+      register: drbd_mod
+      changed_when: false
+
+    - name: Fail if DRBD module not loaded
+      fail:
+        msg: "DRBD kernel module not loaded"
+      when: not drbd_mod.stat.exists
+
+    - name: Ensure DRBD loads at boot
+      copy:
+        dest: /etc/modules-load.d/drbd.conf
+        content: "drbd\n"
+        mode: '0644'
+
+    # ==================================================
+    # DRBD SERVICE
+    # ==================================================
+
+    - name: Enable DRBD service
+      systemd:
+        name: drbd
+        enabled: true
+
+    # ==================================================
+    # DRBD CONFIG
+    # ==================================================
+
+    - name: Install DRBD resource config
+      copy:
+        src: /root/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/drbd-nfs/kube.res
+        dest: /etc/drbd.d/kube.res
+        mode: '0644'
+
+    - name: Validate DRBD config
+      command: drbdadm dump {{ drbd_resource }}
+      changed_when: false
+
+    # ==================================================
+    # METADATA (BOTH OR NONE)
+    # ==================================================
+
+    - name: Check DRBD status
+      command: drbdadm status {{ drbd_resource }}
+      register: drbd_status
+      failed_when: false
+      changed_when: false
+
+    - name: Create DRBD metadata if missing
+      command: drbdadm create-md {{ drbd_resource }}
+      when: drbd_status.rc != 0
+
+    # ==================================================
+    # BRING UP DRBD (BOTH)
+    # ==================================================
+
+    - name: Bring DRBD resource up
+      command: drbdadm up {{ drbd_resource }}
+      changed_when: false
+
+    - name: Verify DRBD status
+      command: drbdadm status {{ drbd_resource }}
+      changed_when: false
+
+    # ==================================================
+    # PROMOTE PRIMARY (svc-1 ONLY)
+    # ==================================================
+
+    - name: Promote DRBD to Primary (svc-1 only)
+      command: drbdadm primary --force {{ drbd_resource }}
+      when: inventory_hostname == primary_node
+      changed_when: false
