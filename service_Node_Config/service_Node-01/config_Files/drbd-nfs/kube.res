@@ -7,8 +7,18 @@ resource kube {
   }
 
   net {
-    cram-hmac-alg sha1;
+    cram-hmac-alg sha256;
     shared-secret "kube-drbd-secret";
+  }
+
+  disk {
+    fencing resource-only;
+  }
+
+  handlers {
+    pri-on-incon-degr "echo o > /proc/sysrq-trigger ; halt -f";
+    pri-lost-after-sb "echo o > /proc/sysrq-trigger ; halt -f";
+    local-io-error    "echo o > /proc/sysrq-trigger ; halt -f";
   }
 
   on svc-1.kube.lan {
