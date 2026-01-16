@@ -12,7 +12,7 @@
     vg_name: drbd_vg
     lv_name: drbd_lv
     lv_size: 5G
-    monitor_script: /root/02-drbd-disk-moniter.py
+    monitor_script: monitor_script: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py"
 
   ########################################################
   # PRE-CHECKS (NO CHANGES)
@@ -118,20 +118,26 @@
         size: "{{ lv_size }}"
         state: present
 
-  ########################################################
-  # POST-TASK: DRBD DISK MONITOR
-  ########################################################
-  post_tasks:
+# ==================================================
+# DRBD Disk Monitor Script
+# ==================================================
+- name: Verify DRBD disk monitor script exists
+  stat:
+    path: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py"
+  register: monitor_script_stat
 
-    - name: Ensure DRBD disk monitor script exists
-      stat:
-        path: "{{ monitor_script }}"
-      register: monitor_script_stat
+- name: Fail if DRBD disk monitor script missing
+  fail:
+    msg: "DRBD disk monitor script not found in user HOME"
+  when: not monitor_script_stat.stat.exists
 
-    - name: Fail if DRBD monitor script is missing
-      fail:
-        msg: "Monitor script {{ monitor_script }} not found on {{ inventory_hostname }}"
-      when: not monitor_script_stat.stat.exists
+- name: Ensure monitor script is executable
+  file:
+    path: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py"
+    mode: '0755'
 
-    - name: Run DRBD disk monitor script
-      command: python3 {{ monitor_script }}
+- name: Run DRBD disk monitor script
+  command: >
+    python3 {{ ansible_env.HOME }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py
+  changed_when: false
+
