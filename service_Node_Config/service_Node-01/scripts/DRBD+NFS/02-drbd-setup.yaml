@@ -52,6 +52,7 @@
         name:
           - drbd-utils
           - nfs-common
+          - nfs-kernel-server
           - rpcbind
         state: present
         update_cache: yes
