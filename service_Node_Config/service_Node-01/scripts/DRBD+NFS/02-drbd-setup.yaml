@@ -1,143 +1,120 @@
 ---
-- name: Verify and create LVM for DRBD on both nodes
+- name: DRBD setup + sync + monitor
   hosts:
     - svc-1.kube.lan
     - svc-2.kube.lan
-  become: yes
-  gather_facts: false
-  serial: 0   # ensure parallel execution
+  become: true
+  gather_facts: true
+  serial: 0
 
   vars:
-    disk: /dev/nvme0n2
     vg_name: drbd_vg
     lv_name: drbd_lv
-    lv_size: 5G
-    monitor_script: monitor_script: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py"
+    drbd_res: kube
+    drbd_device: /dev/drbd0
+    backing_lv: "/dev/{{ vg_name }}/{{ lv_name }}"
+    monitor_script: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py"
 
-  ########################################################
-  # PRE-CHECKS (NO CHANGES)
-  ########################################################
-  pre_tasks:
-
-    - name: Verify disk exists
+  ##################################################
+  # VERIFY BACKING STORAGE
+  ##################################################
+  tasks:
+    - name: Verify backing LV exists
       stat:
-        path: "{{ disk }}"
-      register: disk_stat
+        path: "{{ backing_lv }}"
+      register: lv_stat
 
-    - name: Fail if disk does not exist
+    - name: Abort if backing LV missing
       fail:
-        msg: "Disk {{ disk }} does not exist on {{ inventory_hostname }}"
-      when: not disk_stat.stat.exists
+        msg: "Backing LV {{ backing_lv }} missing on {{ inventory_hostname }}"
+      when: not lv_stat.stat.exists
 
-    - name: Check if disk is already a PV
-      command: pvs --noheadings {{ disk }}
-      register: pv_check
-      changed_when: false
-      failed_when: false
-
-    - name: Fail if disk is already a Physical Volume
-      fail:
-        msg: "Disk {{ disk }} is already a PV on {{ inventory_hostname }}"
-      when: pv_check.stdout | trim != ""
-
-    - name: Check if VG already exists
-      command: vgs {{ vg_name }}
-      register: vg_check
-      changed_when: false
-      failed_when: false
-
-    - name: Fail if VG already exists
-      fail:
-        msg: "VG {{ vg_name }} already exists on {{ inventory_hostname }}"
-      when: vg_check.rc == 0
-
-    - name: Check if LV already exists
-      command: lvs {{ vg_name }}/{{ lv_name }}
-      register: lv_check
-      changed_when: false
-      failed_when: false
-
-    - name: Fail if LV already exists
-      fail:
-        msg: "LV {{ lv_name }} already exists on {{ inventory_hostname }}"
-      when: lv_check.rc == 0
-
-    - name: Mark node as verified
-      set_fact:
-        node_verified: true
-
-  ########################################################
-  # GLOBAL VERIFICATION (ALL OR NOTHING)
-  ########################################################
-- name: Ensure verification passed on ALL nodes
-  hosts: localhost
-  gather_facts: false
-
-  tasks:
-    - name: Abort if any node failed verification
-      fail:
-        msg: "Verification failed on one or more nodes. Aborting LVM creation on ALL nodes."
-      when: >
-        groups['all']
-        | map('extract', hostvars, 'node_verified')
-        | select('undefined')
-        | list
-        | length > 0
-
-  ########################################################
-  # APPLY CHANGES (SAFE TO RUN)
-  ########################################################
-- name: Create LVM on both nodes
-  hosts:
-    - svc-1.kube.lan
-    - svc-2.kube.lan
-  become: yes
-  gather_facts: false
-
-  tasks:
-
-    - name: Ensure LVM tools are installed
+    ##################################################
+    # INSTALL DRBD
+    ##################################################
+    - name: Install DRBD packages
       apt:
-        name: lvm2
+        name:
+          - drbd-utils
+          - nfs-common
+          - rpcbind
         state: present
         update_cache: yes
 
-    - name: Create Physical Volume
-      command: pvcreate {{ disk }}
-
-    - name: Create Volume Group
-      lvg:
-        vg: "{{ vg_name }}"
-        pvs: "{{ disk }}"
+    - name: Load DRBD kernel module
+      modprobe:
+        name: drbd
         state: present
 
-    - name: Create Logical Volume
-      lvol:
-        vg: "{{ vg_name }}"
-        lv: "{{ lv_name }}"
-        size: "{{ lv_size }}"
-        state: present
+    - name: Ensure DRBD loads at boot
+      copy:
+        dest: /etc/modules-load.d/drbd.conf
+        content: "drbd\n"
+        mode: '0644'
 
-# ==================================================
-# DRBD Disk Monitor Script
-# ==================================================
+    ##################################################
+    # DRBD CONFIG
+    ##################################################
+    - name: Install DRBD resource file
+      copy:
+        src: kubernetes_Cluster_Config/service_Node_Config/service_Node-01/config_Files/drbd-nfs/kube.res
+        dest: /etc/drbd.d/kube.res
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Validate DRBD configuration
+      command: drbdadm dump {{ drbd_res }}
+      changed_when: false
+
+    ##################################################
+    # DRBD INITIALIZATION
+    ##################################################
+    - name: Check DRBD status
+      command: drbdadm status {{ drbd_res }}
+      register: drbd_status
+      failed_when: false
+      changed_when: false
+
+    - name: Create DRBD metadata (first time only)
+      command: drbdadm create-md {{ drbd_res }}
+      when: drbd_status.rc != 0
+
+    - name: Bring DRBD resource up
+      command: drbdadm up {{ drbd_res }}
+      changed_when: false
+
+    ##################################################
+    # PROMOTION (svc-1 ONLY)
+    ##################################################
+    - name: Promote svc-1 to Primary
+      command: drbdadm primary --force {{ drbd_res }}
+      when: inventory_hostname == "svc-1.kube.lan"
+      changed_when: false
+
+##################################################
+# DRBD SYNC MONITOR (CUSTOM SCRIPT)
+##################################################
 - name: Verify DRBD disk monitor script exists
   stat:
-    path: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py"
-  register: monitor_script_stat
+    path: "{{ monitor_script }}"
+  register: monitor_stat
 
 - name: Fail if DRBD disk monitor script missing
   fail:
-    msg: "DRBD disk monitor script not found in user HOME"
-  when: not monitor_script_stat.stat.exists
+    msg: "DRBD monitor script not found: {{ monitor_script }}"
+  when: not monitor_stat.stat.exists
 
-- name: Ensure monitor script is executable
+- name: Ensure DRBD monitor script is executable
   file:
-    path: "{{ ansible_env.HOME }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py"
+    path: "{{ monitor_script }}"
     mode: '0755'
 
-- name: Run DRBD disk monitor script
-  command: >
-    python3 {{ ansible_env.HOME }}/kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py
+- name: Wait for DRBD sync using custom monitor script
+  command: python3 {{ monitor_script }}
+  register: monitor_result
+  retries: 60
+  delay: 10
+  until: monitor_result.rc == 0
   changed_when: false
 
