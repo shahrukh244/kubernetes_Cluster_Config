@@ -1,0 +1,123 @@
+---
+- name: Atomic LVM creation on both nodes (verify first)
+  hosts:
+    - svc-1.kube.lan
+    - svc-2.kube.lan
+  become: yes
+  gather_facts: false
+
+  vars:
+    disk: /dev/nvme0n2
+    vg_name: drbd_vg
+    lv_name: drbd_lv
+    lv_size: 5g
+
+  tasks:
+    # ==================================================
+    # PRE-CHECKS (RUN ON BOTH NODES)
+    # ==================================================
+
+    - name: Check existing Volume Groups
+      command: vgs --noheadings -o vg_name
+      register: vg_check
+      changed_when: false
+      failed_when: false
+
+    - name: Check existing Logical Volumes
+      command: lvs --noheadings -o lv_name
+      register: lv_check
+      changed_when: false
+      failed_when: false
+
+    - name: Set local LVM state facts
+      set_fact:
+        vg_present: "{{ vg_name in vg_check.stdout }}"
+        lv_present: "{{ lv_name in lv_check.stdout }}"
+
+    # ==================================================
+    # GLOBAL CONSISTENCY CHECK (BOTH OR NONE)
+    # ==================================================
+
+    - name: Fail if LVM state is inconsistent across nodes
+      run_once: true
+      vars:
+        vg_states: "{{ ansible_play_hosts | map('extract', hostvars, 'vg_present') | list }}"
+        lv_states: "{{ ansible_play_hosts | map('extract', hostvars, 'lv_present') | list }}"
+      fail:
+        msg: |
+          ❌ INCONSISTENT LVM STATE DETECTED
+
+          VG present states : {{ vg_states }}
+          LV present states : {{ lv_states }}
+
+          All nodes must be in the SAME state.
+          Fix manually before re-running.
+      when: >
+        (vg_states | unique | length > 1) or
+        (lv_states | unique | length > 1)
+
+    # ==================================================
+    # GLOBAL DECISION (RUN ONCE)
+    # ==================================================
+
+    - name: Decide whether LVM creation is required
+      run_once: true
+      set_fact:
+        create_lvm: "{{ not vg_present }}"
+
+    # ==================================================
+    # INSTALL DEPENDENCY (ONLY IF CREATING)
+    # ==================================================
+
+    - name: Ensure LVM tools are installed
+      apt:
+        name: lvm2
+        state: present
+        update_cache: yes
+      when: create_lvm
+
+    # ==================================================
+    # CREATE LVM (RUNS ON BOTH OR NONE)
+    # ==================================================
+
+    - name: Create Volume Group
+      lvg:
+        vg: "{{ vg_name }}"
+        pvs: "{{ disk }}"
+        state: present
+      when: create_lvm
+
+    - name: Create Logical Volume ({{ lv_size }})
+      lvol:
+        vg: "{{ vg_name }}"
+        lv: "{{ lv_name }}"
+        size: "{{ lv_size }}"
+        state: present
+      when: create_lvm
+
+    # ==================================================
+    # POST-VERIFICATION (RUN ON BOTH NODES)
+    # ==================================================
+
+    - name: Verify Physical Volume
+      command: pvs --noheadings -o pv_name
+      changed_when: false
+
+    - name: Verify Volume Group
+      command: vgs --noheadings -o vg_name
+      changed_when: false
+
+    - name: Verify Logical Volume
+      command: lvs --noheadings {{ vg_name }}/{{ lv_name }}
+      changed_when: false
+
+    - name: Show final block layout
+      command: lsblk
+      register: lsblk_out
+      changed_when: false
+
+    - name: Print LVM verification summary
+      debug:
+        msg: |
+          ===== LVM STATUS ON {{ inventory_hostname }} =====
+          {{ lsblk_out.stdout }}
