@@ -1,123 +1,120 @@
 ---
-- name: Atomic LVM creation on both nodes (verify first)
-  hosts:
-    - svc-1.kube.lan
-    - svc-2.kube.lan
+- name: Verify and create LVM for DRBD on both nodes
+  hosts: [svc-1.kube.lan, svc-2.kube.lan]
   become: yes
   gather_facts: false
-
+  serial: 0
   vars:
     disk: /dev/nvme0n2
     vg_name: drbd_vg
     lv_name: drbd_lv
-    lv_size: 5g
+    lv_size: 5G
+    monitor_script: kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py
 
-  tasks:
-    # ==================================================
-    # PRE-CHECKS (RUN ON BOTH NODES)
-    # ==================================================
+  pre_tasks:
+    - name: Verify disk exists
+      stat:
+        path: "{{ disk }}"
+      register: disk_stat
 
-    - name: Check existing Volume Groups
-      command: vgs --noheadings -o vg_name
+    - name: Fail if disk does not exist
+      fail:
+        msg: "Disk {{ disk }} does not exist on {{ inventory_hostname }}"
+      when: not disk_stat.stat.exists
+
+    - name: Check if disk is already a PV
+      command: pvs --noheadings {{ disk }}
+      register: pv_check
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if disk is already a Physical Volume
+      fail:
+        msg: "Disk {{ disk }} is already a PV on {{ inventory_hostname }}"
+      when: pv_check.stdout | trim != ""
+
+    - name: Check if VG already exists
+      command: vgs {{ vg_name }}
       register: vg_check
       changed_when: false
       failed_when: false
 
-    - name: Check existing Logical Volumes
-      command: lvs --noheadings -o lv_name
+    - name: Fail if VG already exists
+      fail:
+        msg: "VG {{ vg_name }} already exists on {{ inventory_hostname }}"
+      when: vg_check.rc == 0
+
+    - name: Check if LV already exists
+      command: lvs {{ vg_name }}/{{ lv_name }}
       register: lv_check
       changed_when: false
       failed_when: false
 
-    - name: Set local LVM state facts
-      set_fact:
-        vg_present: "{{ vg_name in vg_check.stdout }}"
-        lv_present: "{{ lv_name in lv_check.stdout }}"
-
-    # ==================================================
-    # GLOBAL CONSISTENCY CHECK (BOTH OR NONE)
-    # ==================================================
-
-    - name: Fail if LVM state is inconsistent across nodes
-      run_once: true
-      vars:
-        vg_states: "{{ ansible_play_hosts | map('extract', hostvars, 'vg_present') | list }}"
-        lv_states: "{{ ansible_play_hosts | map('extract', hostvars, 'lv_present') | list }}"
+    - name: Fail if LV already exists
       fail:
-        msg: |
-          ❌ INCONSISTENT LVM STATE DETECTED
+        msg: "LV {{ lv_name }} already exists on {{ inventory_hostname }}"
+      when: lv_check.rc == 0
 
-          VG present states : {{ vg_states }}
-          LV present states : {{ lv_states }}
-
-          All nodes must be in the SAME state.
-          Fix manually before re-running.
-      when: >
-        (vg_states | unique | length > 1) or
-        (lv_states | unique | length > 1)
-
-    # ==================================================
-    # GLOBAL DECISION (RUN ONCE)
-    # ==================================================
-
-    - name: Decide whether LVM creation is required
-      run_once: true
+    - name: Mark node as verified
       set_fact:
-        create_lvm: "{{ not vg_present }}"
+        node_verified: true
 
-    # ==================================================
-    # INSTALL DEPENDENCY (ONLY IF CREATING)
-    # ==================================================
+- name: Ensure BOTH nodes passed pre-checks
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Abort if any DRBD node failed verification
+      fail:
+        msg: "Pre-check failed on one or both nodes. Aborting LVM creation."
+      when: >
+        not hostvars['svc-1.kube.lan'].get('node_verified', false) or
+        not hostvars['svc-2.kube.lan'].get('node_verified', false)
 
+- name: Create LVM on both nodes
+  hosts: [svc-1.kube.lan, svc-2.kube.lan]
+  become: yes
+  gather_facts: false
+  serial: 0
+  vars:
+    disk: /dev/nvme0n2
+    vg_name: drbd_vg
+    lv_name: drbd_lv
+    lv_size: 5G
+    monitor_script: kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py
+
+  tasks:
     - name: Ensure LVM tools are installed
       apt:
         name: lvm2
         state: present
         update_cache: yes
-      when: create_lvm
 
-    # ==================================================
-    # CREATE LVM (RUNS ON BOTH OR NONE)
-    # ==================================================
+    - name: Create Physical Volume
+      command: pvcreate {{ disk }}
 
     - name: Create Volume Group
       lvg:
         vg: "{{ vg_name }}"
         pvs: "{{ disk }}"
         state: present
-      when: create_lvm
 
-    - name: Create Logical Volume ({{ lv_size }})
+    - name: Create Logical Volume
       lvol:
         vg: "{{ vg_name }}"
         lv: "{{ lv_name }}"
         size: "{{ lv_size }}"
         state: present
-      when: create_lvm
 
-    # ==================================================
-    # POST-VERIFICATION (RUN ON BOTH NODES)
-    # ==================================================
+  post_tasks:
+    - name: Ensure DRBD disk monitor script exists
+      stat:
+        path: "{{ monitor_script }}"
+      register: monitor_script_stat
 
-    - name: Verify Physical Volume
-      command: pvs --noheadings -o pv_name
-      changed_when: false
+    - name: Fail if DRBD monitor script is missing
+      fail:
+        msg: "Monitor script {{ monitor_script }} not found on {{ inventory_hostname }}"
+      when: not monitor_script_stat.stat.exists
 
-    - name: Verify Volume Group
-      command: vgs --noheadings -o vg_name
-      changed_when: false
-
-    - name: Verify Logical Volume
-      command: lvs --noheadings {{ vg_name }}/{{ lv_name }}
-      changed_when: false
-
-    - name: Show final block layout
-      command: lsblk
-      register: lsblk_out
-      changed_when: false
-
-    - name: Print LVM verification summary
-      debug:
-        msg: |
-          ===== LVM STATUS ON {{ inventory_hostname }} =====
-          {{ lsblk_out.stdout }}
+    - name: Run DRBD disk monitor script
+      command: python3 {{ monitor_script }}
