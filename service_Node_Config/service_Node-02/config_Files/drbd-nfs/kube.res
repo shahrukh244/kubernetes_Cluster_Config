@@ -13,14 +13,14 @@ resource kube {
 
   on svc-1.kube.lan {
     device    /dev/drbd0;
-    disk      /dev/nvme0n2;
+    disk      /dev/drbd_vg/drbd_lv;
     address   10.0.0.11:7789;
     meta-disk internal;
   }
 
   on svc-2.kube.lan {
     device    /dev/drbd0;
-    disk      /dev/nvme0n2;
+    disk      /dev/drbd_vg/drbd_lv;
     address   10.0.0.12:7789;
     meta-disk internal;
   }
