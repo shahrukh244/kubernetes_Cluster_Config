@@ -1,106 +1,49 @@
 ---
-- name: Verify and create LVM for DRBD on both nodes
-  hosts: [svc-1.kube.lan, svc-2.kube.lan]
+- name: Verify and create LVM for DRBD (rerun-safe)
+  hosts:
+    - svc-1.kube.lan
+    - svc-2.kube.lan
   become: yes
   gather_facts: false
   serial: 0
+
   vars:
     disk: /dev/nvme0n2
     vg_name: drbd_vg
     lv_name: drbd_lv
     lv_size: 5G
 
-  pre_tasks:
+  tasks:
     - name: Verify disk exists
       stat:
         path: "{{ disk }}"
       register: disk_stat
 
-    - name: Fail if disk does not exist
+    - name: Abort if disk does not exist
       fail:
         msg: "Disk {{ disk }} does not exist on {{ inventory_hostname }}"
       when: not disk_stat.stat.exists
 
-    - name: Check if disk is already a PV
-      command: pvs --noheadings {{ disk }}
-      register: pv_check
-      changed_when: false
-      failed_when: false
-
-    - name: Fail if disk is already a Physical Volume
-      fail:
-        msg: "Disk {{ disk }} is already a PV on {{ inventory_hostname }}"
-      when: pv_check.stdout | trim != ""
-
-    - name: Check if VG already exists
-      command: vgs {{ vg_name }}
-      register: vg_check
-      changed_when: false
-      failed_when: false
-
-    - name: Fail if VG already exists
-      fail:
-        msg: "VG {{ vg_name }} already exists on {{ inventory_hostname }}"
-      when: vg_check.rc == 0
-
-    - name: Check if LV already exists
-      command: lvs {{ vg_name }}/{{ lv_name }}
-      register: lv_check
-      changed_when: false
-      failed_when: false
-
-    - name: Fail if LV already exists
-      fail:
-        msg: "LV {{ lv_name }} already exists on {{ inventory_hostname }}"
-      when: lv_check.rc == 0
-
-    - name: Mark node as verified
-      set_fact:
-        node_verified: true
-
-- name: Ensure BOTH nodes passed pre-checks
-  hosts: localhost
-  gather_facts: false
-  tasks:
-    - name: Abort if any DRBD node failed verification
-      fail:
-        msg: "Pre-check failed on one or both nodes. Aborting LVM creation."
-      when: >
-        not hostvars['svc-1.kube.lan'].get('node_verified', false) or
-        not hostvars['svc-2.kube.lan'].get('node_verified', false)
-
-- name: Create LVM on both nodes
-  hosts: [svc-1.kube.lan, svc-2.kube.lan]
-  become: yes
-  gather_facts: false
-  serial: 0
-  vars:
-    disk: /dev/nvme0n2
-    vg_name: drbd_vg
-    lv_name: drbd_lv
-    lv_size: 5G
-    monitor_script: kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py
-
-  tasks:
     - name: Ensure LVM tools are installed
       apt:
         name: lvm2
         state: present
         update_cache: yes
 
-    - name: Create Physical Volume
-      command: pvcreate {{ disk }}
-
-    - name: Create Volume Group
+    # This task is SAFE:
+    # - Creates PV if missing
+    # - Creates VG if missing
+    # - Does NOTHING if already exists
+    - name: Ensure VG exists (creates PV if needed)
       lvg:
         vg: "{{ vg_name }}"
         pvs: "{{ disk }}"
         state: present
 
-    - name: Create Logical Volume
+    # This task is SAFE and idempotent
+    - name: Ensure LV exists
       lvol:
         vg: "{{ vg_name }}"
         lv: "{{ lv_name }}"
         size: "{{ lv_size }}"
         state: present
-
