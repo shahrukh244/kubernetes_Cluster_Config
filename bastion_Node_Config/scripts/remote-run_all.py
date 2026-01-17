@@ -21,7 +21,8 @@
     - "09-configure_chrony.yaml"
     - "10-install_oc_cli.yaml"
     - "11-install_kubectl.yaml"
-    - "12-reboot.yaml"
+    - "12-install-nfs.yaml"
+    - "13-reboot.yaml"
 
   tasks:
     # --------------------------------------------------
