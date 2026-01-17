@@ -21,6 +21,7 @@
       - 09-cri-o.yaml
       - 10-kubernetes.yaml
       - 11-ready-cp-1.yaml
+      - 12-install-nfs.yaml
       - fetch_kubeconfig.yaml
 
   tasks:
