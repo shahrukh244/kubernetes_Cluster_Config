@@ -1,0 +1,6 @@
+apiVersion: v2
+name: nfs-storageclass
+description: Helm chart to deploy NFS StorageClass with Retain reclaim policy
+type: application
+version: 1.0.0
+appVersion: "1.0"
