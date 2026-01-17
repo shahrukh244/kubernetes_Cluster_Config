@@ -10,7 +10,7 @@ storageClass:
 
   parameters:
     server: "10.0.0.1"
-    share: "/shares/kubernetes/StorageClass/Retain"
+    share: "/share/drbd_nfs/kubernetes/StorageClass/Retain"
     subDir: "${pvc.metadata.namespace}-${pvc.metadata.name}"
 
   reclaimPolicy: Retain
@@ -21,3 +21,4 @@ storageClass:
     - nfsvers=4.1
 
   allowVolumeExpansion: true
+
