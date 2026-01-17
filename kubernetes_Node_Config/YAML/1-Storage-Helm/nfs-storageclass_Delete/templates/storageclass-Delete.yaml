@@ -1,0 +1,22 @@
+{{- if .Values.storageClass.enabled }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storageClass.name }}
+  annotations:
+    {{- range $key, $value := .Values.storageClass.annotations }}
+    {{ $key }}: "{{ $value }}"
+    {{- end }}
+provisioner: {{ .Values.storageClass.provisioner }}
+parameters:
+  server: {{ .Values.storageClass.parameters.server | quote }}
+  share: {{ .Values.storageClass.parameters.share | quote }}
+  subDir: {{ .Values.storageClass.parameters.subDir | quote }}
+reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
+volumeBindingMode: {{ .Values.storageClass.volumeBindingMode }}
+mountOptions:
+  {{- range .Values.storageClass.mountOptions }}
+  - {{ . }}
+  {{- end }}
+allowVolumeExpansion: {{ .Values.storageClass.allowVolumeExpansion }}
+{{- end }}

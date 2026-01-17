@@ -1,0 +1,23 @@
+storageClass:
+  enabled: true
+
+  name: nfs-delete
+
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+
+  provisioner: nfs.csi.k8s.io
+
+  parameters:
+    server: "10.0.0.1"
+    share: "/shares/kubernetes/StorageClass/Delete"
+    subDir: "${pvc.metadata.namespace}-${pvc.metadata.name}"
+
+  reclaimPolicy: Delete
+  volumeBindingMode: Immediate
+
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+
+  allowVolumeExpansion: true

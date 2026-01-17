@@ -1,0 +1,23 @@
+storageClass:
+  enabled: true
+
+  name: nfs-retain
+
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+
+  provisioner: nfs.csi.k8s.io
+
+  parameters:
+    server: "10.0.0.1"
+    share: "/shares/kubernetes/StorageClass/Retain"
+    subDir: "${pvc.metadata.namespace}-${pvc.metadata.name}"
+
+  reclaimPolicy: Retain
+  volumeBindingMode: WaitForFirstConsumer
+
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+
+  allowVolumeExpansion: true
