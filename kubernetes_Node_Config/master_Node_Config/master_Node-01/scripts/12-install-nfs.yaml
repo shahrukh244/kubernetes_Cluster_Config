@@ -1,0 +1,19 @@
+---
+- name: Verify and install nfs-common
+  hosts: kube-cp-1.kube.lan
+  become: yes
+  gather_facts: false
+
+  tasks:
+    - name: Check if nfs-common is installed
+      command: dpkg -s nfs-common
+      register: nfs_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install nfs-common if not installed
+      apt:
+        name: nfs-common
+        state: present
+        update_cache: yes
+      when: nfs_check.rc != 0
