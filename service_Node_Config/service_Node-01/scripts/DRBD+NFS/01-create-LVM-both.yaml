@@ -9,7 +9,6 @@
     vg_name: drbd_vg
     lv_name: drbd_lv
     lv_size: 5G
-    monitor_script: kubernetes_Cluster_Config/service_Node_Config/service_Node-01/scripts/DRBD+NFS/02-drbd-disk-moniter.py
 
   pre_tasks:
     - name: Verify disk exists
@@ -105,16 +104,3 @@
         size: "{{ lv_size }}"
         state: present
 
-  post_tasks:
-    - name: Ensure DRBD disk monitor script exists
-      stat:
-        path: "{{ monitor_script }}"
-      register: monitor_script_stat
-
-    - name: Fail if DRBD monitor script is missing
-      fail:
-        msg: "Monitor script {{ monitor_script }} not found on {{ inventory_hostname }}"
-      when: not monitor_script_stat.stat.exists
-
-    - name: Run DRBD disk monitor script
-      command: python3 {{ monitor_script }}
