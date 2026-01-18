@@ -80,6 +80,12 @@
       command: drbdadm dump {{ drbd_res }}
       changed_when: false
 
+    - name: Ensure DRBD service is enabled and started (for boot persistence)
+      systemd:
+        name: drbd
+        enabled: true
+        state: started
+
 - name: Initialize DRBD resources on both nodes
   hosts: [svc-1.kube.lan, svc-2.kube.lan]
   become: true
