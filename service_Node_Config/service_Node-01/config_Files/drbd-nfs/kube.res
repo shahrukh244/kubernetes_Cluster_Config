@@ -2,8 +2,9 @@ resource kube {
   protocol C;
 
   startup {
-    wfc-timeout 15;
-    degr-wfc-timeout 60;
+    wfc-timeout 30;
+    degr-wfc-timeout 15;
+    outdated-wfc-timeout 10;
   }
 
   net {
